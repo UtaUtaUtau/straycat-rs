@@ -8,5 +8,6 @@ anyhow = "1.0.86"
 audrey = "0.3.0"
 clap = { version = "4.5.8", features = ["derive"] }
 hound = "3.5.1"
+regex = "1.10.5"
 rsworld = "0.1.0"
 rsworld-sys = "0.1.0"

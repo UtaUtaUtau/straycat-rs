@@ -1,6 +1,7 @@
-use anyhow::Result;
+mod util;
 use clap::Parser;
 use std::path::PathBuf;
+use util::{pitch_parser, tempo_parser};
 
 #[derive(Parser)]
 #[command(name = "straycrab")]
@@ -9,7 +10,8 @@ use std::path::PathBuf;
 struct ResamplerArgs {
     in_file: PathBuf,
     out_file: PathBuf,
-    pitch: i64,
+    #[arg(value_parser = pitch_parser)]
+    pitch: i32,
     velocity: f64,
     #[arg(default_value_t = String::from(""))]
     flags: String,
@@ -31,12 +33,7 @@ struct ResamplerArgs {
     pitchbend: String,
 }
 
-fn tempo_parser(arg: &str) -> Result<f64> {
-    let tempo: f64 = arg[1..].parse()?;
-    Ok(tempo)
-}
-
 fn main() {
     let args = ResamplerArgs::parse();
-    println!("{}", args.in_file.to_str().unwrap());
+    println!("{}", args.tempo);
 }
