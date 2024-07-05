@@ -1,39 +1,12 @@
+mod audio;
+mod parser;
+mod resample;
 mod util;
 use clap::Parser;
-use std::path::PathBuf;
-use util::{pitch_parser, tempo_parser};
-
-#[derive(Parser)]
-#[command(name = "straycrab")]
-#[command(version = "0.1.0")]
-#[command(about = "WORLD-based UTAU resampler on Rust.")]
-struct ResamplerArgs {
-    in_file: PathBuf,
-    out_file: PathBuf,
-    #[arg(value_parser = pitch_parser)]
-    pitch: i32,
-    velocity: f64,
-    #[arg(default_value_t = String::from(""))]
-    flags: String,
-    #[arg(default_value_t = 0.)]
-    offset: f64,
-    #[arg(default_value_t = 1000.)]
-    length: f64,
-    #[arg(default_value_t = 0.)]
-    consonant: f64,
-    #[arg(default_value_t = 0.)]
-    cutoff: f64,
-    #[arg(default_value_t = 100.)]
-    volume: f64,
-    #[arg(default_value_t = 0.)]
-    modulation: f64,
-    #[arg(value_parser = tempo_parser, default_value_t = 100.)]
-    tempo: f64,
-    #[arg(default_value_t = String::from("AA"))]
-    pitchbend: String,
-}
+use parser::ResamplerArgs;
+use resample::run;
 
 fn main() {
     let args = ResamplerArgs::parse();
-    println!("{}", args.tempo);
+    run(args);
 }

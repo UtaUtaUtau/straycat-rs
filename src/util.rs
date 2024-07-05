@@ -34,13 +34,13 @@ mod tests {
     use crate::util::{pitch_parser, tempo_parser};
 
     #[test]
-    fn tempo_test() {
+    fn test_tempo() {
         let tempo = tempo_parser("!120").unwrap();
         assert_eq!(tempo, 120.);
     }
 
     #[test]
-    fn pitch_test() {
+    fn test_pitch() {
         let pitch = pitch_parser("C4").unwrap();
         assert_eq!(pitch, 60);
         let pitch = pitch_parser("C5").unwrap();
