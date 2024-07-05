@@ -25,8 +25,9 @@ struct ResamplerArgs {
     volume: f64,
     #[arg(default_value_t = 0.)]
     modulation: f64,
-    #[arg(default_value_t = 100., value_parser = tempo_parser)]
+    #[arg(value_parser = tempo_parser, default_value_t = 100.)]
     tempo: f64,
+    #[arg(default_value_t = String::from("AA"))]
     pitchbend: String,
 }
 
