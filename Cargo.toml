@@ -1,0 +1,12 @@
+[package]
+name = "straycrab"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+audrey = "0.3.0"
+clap = "4.5.8"
+hound = "3.5.1"
+rsworld = "0.1.0"
+rsworld-sys = "0.1.0"
