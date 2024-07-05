@@ -1,3 +1,4 @@
+use super::util::lanczos_window;
 use anyhow::{anyhow, Result};
 use hound::{SampleFormat, WavSpec, WavWriter};
 use rubato::{
@@ -12,33 +13,6 @@ use symphonia::{
     default::{get_codecs, get_probe},
 };
 
-static SUPPORTED_FILETYPES: &'static [&'static str] = &[
-    "wav", "aac", "adpcm", "aiff", "alac", "caf", "flac", "mkv", "mp1", "mp2", "mp3", "mp4", "m4a",
-    "ogg", "oga", "webm",
-];
-
-fn is_supported_filetype<S: AsRef<str>>(ext: S) -> Result<()> {
-    for t in SUPPORTED_FILETYPES {
-        if *t == ext.as_ref() {
-            return Ok(());
-        }
-    }
-    Err(anyhow!("Unsupported filetype."))
-}
-
-fn sinc(x: f64) -> f64 {
-    if x == 0. {
-        1.
-    } else {
-        let x = consts::PI * x;
-        x.sin() / x
-    }
-}
-
-fn lanczos_window(x: f64, a: isize) -> f64 {
-    sinc(x) * sinc(x / a as f64)
-}
-
 fn resample_audio(
     audio: Vec<f64>,
     in_fs: u32,
@@ -47,7 +21,7 @@ fn resample_audio(
 ) -> Result<Vec<f64>> {
     let in_samples = audio.len();
     let out_samples = (in_samples as f64 * out_fs as f64 / in_fs as f64) as usize;
-    let lanczos_size = lanczos_size.unwrap_or(2);
+    let lanczos_size = lanczos_size.unwrap_or(3);
     let mut resampled: Vec<f64> = Vec::with_capacity(out_samples);
 
     for i in 0..out_samples {
@@ -55,13 +29,7 @@ fn resample_audio(
         let index = findex.floor() as isize;
         let mut sample = 0.;
         for j in -lanczos_size..=lanczos_size {
-            let k = if index < lanczos_size {
-                0
-            } else if index + j >= out_samples as isize {
-                out_samples as isize - 1
-            } else {
-                index + j
-            } as usize;
+            let k = (index + j).clamp(0, in_samples as isize - 1) as usize;
             sample += audio[k] * lanczos_window(findex - k as f64, lanczos_size);
         }
         resampled.push(sample);
@@ -71,7 +39,6 @@ fn resample_audio(
 
 pub fn read_audio<P: AsRef<Path>>(path: P, lanczos_size: Option<isize>) -> Result<Vec<f64>> {
     let ext = path.as_ref().extension().unwrap().to_str().unwrap();
-    is_supported_filetype(ext)?;
 
     let source = File::open(path.as_ref())?;
 
@@ -150,8 +117,19 @@ pub fn write_audio<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<()> {
         sample_format: SampleFormat::Int,
     };
     let mut writer = WavWriter::create(path.as_ref(), out_spec)?;
-    for s in audio {
-        writer.write_sample((s * i16::MAX as f64).clamp(i16::MIN as f64, i16::MAX as f64) as i16)?
+    let mut scaled_audio: Vec<f64> = audio
+        .into_iter()
+        .map(|x| (x * i16::MAX as f64).clamp(i16::MIN as f64, i16::MAX as f64))
+        .collect();
+    for s in 0..scaled_audio.len() {
+        if s + 1 < scaled_audio.len() {
+            let q = scaled_audio[s] as i16;
+            let error = scaled_audio[s] - q as f64;
+            scaled_audio[s + 1] += error;
+            writer.write_sample(q)?;
+        } else {
+            writer.write_sample(scaled_audio[s] as i16)?;
+        }
     }
     writer.finalize()?;
     Ok(())
@@ -165,13 +143,19 @@ mod tests {
 
     #[test]
     fn test_read_write() {
-        let test_paths = vec!["test/01.wav"];
+        let test_paths = vec![
+            "test/01.wav",
+            "test/pjs001.wav",
+            "test/paul.wav",
+            "test/ano ko wa akuma solanri.wav",
+            "test/ano ko wa akuma solanri.mp3",
+        ];
         let test_paths: Vec<&Path> = test_paths.into_iter().map(|x| Path::new(x)).collect();
         for path in test_paths {
-            let mut out_fname = path.file_stem().expect("Failed to get filename").to_owned();
-            out_fname.push("_out");
-            let out_path = path.with_file_name(out_fname).with_extension("wav");
-            println!("{:?}", out_path.as_os_str());
+            println!("Testing {:?}", path.as_os_str());
+            let mut out_fname = path.file_name().expect("Failed to get filename").to_owned();
+            out_fname.push(".out.wav");
+            let out_path = path.with_file_name(out_fname);
 
             let audio = read_audio(path, None).expect("Failed to read file");
             write_audio(out_path, audio).expect("Failed to write audio");

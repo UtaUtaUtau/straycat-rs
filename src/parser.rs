@@ -3,7 +3,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "straycrab")]
+#[command(name = "straycat-rs")]
 #[command(version = "0.1.0")]
 #[command(about = "WORLD-based UTAU resampler on Rust.")]
 pub struct ResamplerArgs {
