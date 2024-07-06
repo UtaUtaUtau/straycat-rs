@@ -3,6 +3,7 @@ mod interpolator;
 mod parser;
 mod resample;
 mod util;
+mod world;
 use clap::Parser;
 use parser::ResamplerArgs;
 use resample::run;
