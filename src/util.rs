@@ -1,6 +1,24 @@
 use anyhow::Result;
 use regex::Regex;
 
+pub fn arange(end: i32) -> Vec<f64> {
+    (0..end).map(|x| x as f64).collect()
+}
+
+pub fn linspace(start: f64, end: f64, num: usize, endpoint: Option<bool>) -> Vec<f64> {
+    let endpoint = endpoint.unwrap_or(true);
+    let mut result = Vec::with_capacity(num);
+    for i in 0..num {
+        let ratio = if endpoint {
+            i as f64 / (num as f64 - 1.)
+        } else {
+            i as f64 / num as f64
+        };
+        result.push(start + (end - start) * ratio);
+    }
+    result
+}
+
 pub fn tempo_parser(arg: &str) -> Result<f64> {
     let tempo: f64 = arg[1..].parse()?;
     Ok(tempo)

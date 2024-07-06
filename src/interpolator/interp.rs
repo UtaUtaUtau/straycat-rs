@@ -65,10 +65,59 @@ impl Interpolator for Akima {
             return self.curve[0];
         }
         let index = x.floor() as usize;
-        let ratio = x.fract();
+        let r = x.fract();
         let coeff = &self.coeffs[index];
 
-        coeff.a + coeff.b * ratio + coeff.c * ratio * ratio + coeff.d * ratio * ratio * ratio
+        coeff.a + coeff.b * r + coeff.c * r * r + coeff.d * r * r * r
+    }
+}
+
+pub struct CatmullRom {
+    curve: Vec<f64>,
+    coeffs: Vec<CubicCoefficients>,
+}
+
+impl CatmullRom {
+    pub fn new(curve: Vec<f64>) -> Self {
+        let n = curve.len() - 1;
+        let mut coeffs = Vec::with_capacity(n);
+        let mut p = Vec::with_capacity(n + 2);
+
+        for x in &curve {
+            p.push(*x);
+        }
+
+        p.insert(0, curve[0]);
+        p.push(curve[curve.len() - 1]);
+
+        for i in 0..n {
+            let i = i + 1;
+            coeffs.push(CubicCoefficients {
+                a: -0.5 * p[i - 1] + 1.5 * p[i] - 1.5 * p[i + 1] + 0.5 * p[i + 2],
+                b: p[i - 1] - 2.5 * p[i] + 2. * p[i + 1] - 0.5 * p[i + 2],
+                c: -0.5 * p[i - 1] + 0.5 * p[i + 1],
+                d: p[i],
+            });
+        }
+
+        Self { curve, coeffs }
+    }
+}
+
+impl Interpolator for CatmullRom {
+    fn sample(&self, x: f64) -> f64 {
+        let x = x.clamp(0., self.curve.len() as f64 - 1.);
+        if x == self.curve.len() as f64 - 1. {
+            return self.curve[self.curve.len() - 1];
+        }
+        if x == 0. {
+            return self.curve[0];
+        }
+        let index = x.floor() as usize;
+        let r = x.fract();
+        let coeff = &self.coeffs[index];
+
+        coeff.a * r * r * r + coeff.b * r * r + coeff.c * r + coeff.d
     }
 }
 
@@ -105,8 +154,15 @@ impl Interpolator for Lanczos {
         let mut y = 0.;
         let a = self.q as isize;
         for i in -a..=a {
-            let k = (index + i).clamp(0, self.curve.len() as isize - 1) as usize;
-            y += self.curve[k] * self.lanczos_window(x - k as f64);
+            let k = index + i;
+            let s = if k < 0 {
+                0.
+            } else if k as usize > self.curve.len() - 1 {
+                0.
+            } else {
+                self.curve[k as usize]
+            };
+            y += s * self.lanczos_window(x - k as f64);
         }
         y
     }
@@ -116,20 +172,56 @@ impl Interpolator for Lanczos {
 mod tests {
     use std::{fs::File, io::Write};
 
-    use super::{Akima, Interpolator};
+    use super::{Akima, CatmullRom, Interpolator, Lanczos};
+    const X: [f64; 6] = [1., 2., 4., 2., 3., 2.]; // [0., 0., 0., 0., 0.5, 4., 5., 7.5];
 
     #[test]
     fn test_akima() {
-        let x = vec![0., 0., 0., 0., 0.5, 4., 5., 7.5];
-        let n = x.len() as i32;
-        let interp = Akima::new(x);
+        let n = X.len() as i32;
+        let interp = Akima::new(X.to_vec());
 
         let mut csv = File::create("test/akima.csv").expect("Cannot create file");
         csv.write_all("x,y\n".as_bytes())
             .expect("Cannot write to file");
-        for i in -1..=n + 1 {
-            for j in 0..8 {
-                let i = i as f64 + j as f64 / 8.;
+        for i in 0..n - 1 {
+            for j in 0..256 {
+                let i = i as f64 + j as f64 / 256.;
+                let y = interp.sample(i);
+                csv.write_all(format!("{},{}\n", i, y).as_bytes())
+                    .expect("Cannot write to file");
+            }
+        }
+    }
+
+    #[test]
+    fn test_catmull_rom() {
+        let n = X.len() as i32;
+        let interp = CatmullRom::new(X.to_vec());
+
+        let mut csv = File::create("test/catmull_rom.csv").expect("Cannot create file");
+        csv.write_all("x,y\n".as_bytes())
+            .expect("Cannot write to file");
+        for i in 0..n - 1 {
+            for j in 0..256 {
+                let i = i as f64 + j as f64 / 256.;
+                let y = interp.sample(i);
+                csv.write_all(format!("{},{}\n", i, y).as_bytes())
+                    .expect("Cannot write to file");
+            }
+        }
+    }
+
+    #[test]
+    fn test_lanczos() {
+        let n = X.len() as i32;
+        let interp = Lanczos::new(X.to_vec(), None);
+
+        let mut csv = File::create("test/lanczos.csv").expect("Cannot create file");
+        csv.write_all("x,y\n".as_bytes())
+            .expect("Cannot write to file");
+        for i in 0..n - 1 {
+            for j in 0..256 {
+                let i = i as f64 + j as f64 / 256.;
                 let y = interp.sample(i);
                 csv.write_all(format!("{},{}\n", i, y).as_bytes())
                     .expect("Cannot write to file");

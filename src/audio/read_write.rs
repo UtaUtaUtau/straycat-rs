@@ -1,5 +1,6 @@
 use crate::interpolator::interp::{Interpolator, Lanczos};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use biquad::{Biquad, Coefficients, DirectForm2Transposed, ToHertz};
 use hound::{SampleFormat, WavSpec, WavWriter};
 use std::{fs::File, path::Path};
 use symphonia::{
@@ -27,6 +28,26 @@ fn resample_audio(
         resampled.push(interp.sample(x));
     }
 
+    if in_fs < out_fs {
+        let biquad_coeffs = match Coefficients::<f64>::from_params(
+            biquad::Type::LowPass,
+            out_fs.hz(),
+            (0.5 * in_fs as f64).hz(),
+            biquad::Q_BUTTERWORTH_F64,
+        ) {
+            Ok(coeffs) => coeffs,
+            Err(_) => return Err(anyhow!("Error setting up biquad filter")),
+        };
+
+        let mut biquad = DirectForm2Transposed::<f64>::new(biquad_coeffs);
+
+        for reps in 0..4 {
+            biquad.reset_state();
+            for s in &mut resampled {
+                *s = biquad.run(*s);
+            }
+        }
+    }
     Ok(resampled)
 }
 
@@ -102,7 +123,7 @@ pub fn read_audio<P: AsRef<Path>>(path: P, lanczos_size: Option<f64>) -> Result<
     }
 }
 
-pub fn write_audio<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<()> {
+pub fn write_audio<P: AsRef<Path>>(path: P, audio: &Vec<f64>) -> Result<()> {
     let out_spec = WavSpec {
         channels: 1,
         sample_rate: 44100,
@@ -141,6 +162,7 @@ mod tests {
             "test/paul.wav",
             "test/ano ko wa akuma solanri.wav",
             "test/ano ko wa akuma solanri.mp3",
+            "test/res.wav",
         ];
         let test_paths: Vec<&Path> = test_paths.into_iter().map(|x| Path::new(x)).collect();
         for path in test_paths {
@@ -150,7 +172,7 @@ mod tests {
             let out_path = path.with_file_name(out_fname);
 
             let audio = read_audio(path, None).expect("Failed to read file");
-            write_audio(out_path, audio).expect("Failed to write audio");
+            write_audio(out_path, &audio).expect("Failed to write audio");
         }
     }
 }
