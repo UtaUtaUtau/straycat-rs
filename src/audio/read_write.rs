@@ -1,6 +1,7 @@
+use crate::interpolator::interp::{Interpolator, Lanczos};
 use anyhow::Result;
 use hound::{SampleFormat, WavSpec, WavWriter};
-use std::{f64::consts, fs::File, path::Path};
+use std::{fs::File, path::Path};
 use symphonia::{
     core::{
         audio::SampleBuffer, codecs::DecoderOptions, errors::Error, formats::FormatOptions,
@@ -9,43 +10,27 @@ use symphonia::{
     default::{get_codecs, get_probe},
 };
 
-pub fn lanczos_window(x: f64, a: isize) -> f64 {
-    let a = a as f64;
-    if x == 0. {
-        1.
-    } else if x.abs() > a {
-        0.
-    } else {
-        let x = consts::PI * x;
-        a * x.sin() * (x / a).sin() / (x * x)
-    }
-}
-
 fn resample_audio(
     audio: Vec<f64>,
     in_fs: u32,
     out_fs: u32,
-    lanczos_size: Option<isize>,
+    lanczos_size: Option<f64>,
 ) -> Result<Vec<f64>> {
     let in_samples = audio.len();
     let out_samples = (in_samples as f64 * out_fs as f64 / in_fs as f64) as usize;
-    let lanczos_size = lanczos_size.unwrap_or(3);
     let mut resampled: Vec<f64> = Vec::with_capacity(out_samples);
 
+    let interp = Lanczos::new(audio, lanczos_size);
+
     for i in 0..out_samples {
-        let findex = i as f64 * in_fs as f64 / out_fs as f64;
-        let index = findex.floor() as isize;
-        let mut sample = 0.;
-        for j in -lanczos_size..=lanczos_size {
-            let k = (index + j).clamp(0, in_samples as isize - 1) as usize;
-            sample += audio[k] * lanczos_window(findex - k as f64, lanczos_size);
-        }
-        resampled.push(sample);
+        let x = in_samples as f64 * i as f64 / out_samples as f64;
+        resampled.push(interp.sample(x));
     }
+
     Ok(resampled)
 }
 
-pub fn read_audio<P: AsRef<Path>>(path: P, lanczos_size: Option<isize>) -> Result<Vec<f64>> {
+pub fn read_audio<P: AsRef<Path>>(path: P, lanczos_size: Option<f64>) -> Result<Vec<f64>> {
     let ext = path.as_ref().extension().unwrap().to_str().unwrap();
 
     let source = File::open(path.as_ref())?;
