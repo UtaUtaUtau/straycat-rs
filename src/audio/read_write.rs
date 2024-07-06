@@ -1,9 +1,5 @@
-use super::util::lanczos_window;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use hound::{SampleFormat, WavSpec, WavWriter};
-use rubato::{
-    Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
-};
 use std::{f64::consts, fs::File, path::Path};
 use symphonia::{
     core::{
@@ -12,6 +8,18 @@ use symphonia::{
     },
     default::{get_codecs, get_probe},
 };
+
+pub fn lanczos_window(x: f64, a: isize) -> f64 {
+    let a = a as f64;
+    if x == 0. {
+        1.
+    } else if x.abs() > a {
+        0.
+    } else {
+        let x = consts::PI * x;
+        a * x.sin() * (x / a).sin() / (x * x)
+    }
+}
 
 fn resample_audio(
     audio: Vec<f64>,
@@ -123,7 +131,7 @@ pub fn write_audio<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<()> {
         .collect();
     for s in 0..scaled_audio.len() {
         if s + 1 < scaled_audio.len() {
-            let q = scaled_audio[s] as i16;
+            let q = scaled_audio[s].clamp(i16::MIN as f64, i16::MAX as f64) as i16;
             let error = scaled_audio[s] - q as f64;
             scaled_audio[s + 1] += error;
             writer.write_sample(q)?;
@@ -138,7 +146,6 @@ pub fn write_audio<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::{read_audio, write_audio};
-    use std::env;
     use std::path::Path;
 
     #[test]
