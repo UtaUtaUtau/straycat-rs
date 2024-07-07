@@ -1,3 +1,4 @@
+use crate::consts;
 use crate::interpolator::interp::{Interpolator, Lanczos};
 use anyhow::{anyhow, Result};
 use biquad::{Biquad, Coefficients, DirectForm2Transposed, ToHertz};
@@ -41,7 +42,7 @@ fn resample_audio(
 
         let mut biquad = DirectForm2Transposed::<f64>::new(biquad_coeffs);
 
-        for reps in 0..4 {
+        for _ in 0..4 {
             biquad.reset_state();
             for s in &mut resampled {
                 *s = biquad.run(*s);
@@ -116,17 +117,17 @@ pub fn read_audio<P: AsRef<Path>>(path: P, lanczos_size: Option<f64>) -> Result<
             Err(_) => break,
         }
     }
-    if fs == 44100 {
+    if fs == consts::SAMPLE_RATE {
         Ok(audio)
     } else {
-        resample_audio(audio, fs, 44100, lanczos_size)
+        resample_audio(audio, fs, consts::SAMPLE_RATE, lanczos_size)
     }
 }
 
 pub fn write_audio<P: AsRef<Path>>(path: P, audio: &Vec<f64>) -> Result<()> {
     let out_spec = WavSpec {
         channels: 1,
-        sample_rate: 44100,
+        sample_rate: consts::SAMPLE_RATE,
         bits_per_sample: 16,
         sample_format: SampleFormat::Int,
     };

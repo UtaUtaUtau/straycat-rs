@@ -1,4 +1,5 @@
 mod audio;
+mod consts;
 mod interpolator;
 mod parser;
 mod resample;
