@@ -12,6 +12,6 @@ hound = "3.5.1"
 regex = "1.10.5"
 rsworld = "0.1.0"
 rsworld-sys = "0.1.0"
-rubato = "0.15.0"
+rubato = { version = "0.15.0", default-features = false }
 serde = { version = "1.0.203", features = ["derive"] }
 symphonia = { version = "0.5.4", features = ["all"] }

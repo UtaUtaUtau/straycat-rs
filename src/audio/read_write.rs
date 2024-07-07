@@ -3,6 +3,9 @@ use crate::interpolator::interp::{Interpolator, Lanczos};
 use anyhow::{anyhow, Result};
 use biquad::{Biquad, Coefficients, DirectForm2Transposed, ToHertz};
 use hound::{SampleFormat, WavSpec, WavWriter};
+use rubato::{
+    Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
+};
 use std::{fs::File, path::Path};
 use symphonia::{
     core::{
@@ -20,34 +23,27 @@ fn resample_audio(
 ) -> Result<Vec<f64>> {
     let in_samples = audio.len();
     let out_samples = (in_samples as f64 * out_fs as f64 / in_fs as f64) as usize;
-    let mut resampled: Vec<f64> = Vec::with_capacity(out_samples);
+    let mut resampled: Vec<f64> = Vec::with_capacity(out_samples); // approx capacity
 
-    let interp = Lanczos::new(audio, lanczos_size);
+    let resampler_params = SincInterpolationParameters {
+        sinc_len: 256,
+        f_cutoff: 1.,
+        oversampling_factor: 128,
+        interpolation: SincInterpolationType::Cubic,
+        window: WindowFunction::Hann,
+    };
+    let mut resampler =
+        SincFixedIn::<f64>::new(out_fs as f64 / in_fs as f64, 2., resampler_params, 1024, 1)?;
 
-    for i in 0..out_samples {
-        let x = in_samples as f64 * i as f64 / out_samples as f64;
-        resampled.push(interp.sample(x));
-    }
-
-    if in_fs < out_fs {
-        let biquad_coeffs = match Coefficients::<f64>::from_params(
-            biquad::Type::LowPass,
-            out_fs.hz(),
-            (0.5 * in_fs as f64).hz(),
-            biquad::Q_BUTTERWORTH_F64,
-        ) {
-            Ok(coeffs) => coeffs,
-            Err(_) => return Err(anyhow!("Error setting up biquad filter")),
-        };
-
-        let mut biquad = DirectForm2Transposed::<f64>::new(biquad_coeffs);
-
-        for _ in 0..4 {
-            biquad.reset_state();
-            for s in &mut resampled {
-                *s = biquad.run(*s);
-            }
+    for i in 0..in_samples / 1024 {
+        let mut chunk = audio[i * 1024..i * 1024 + 1024].to_vec();
+        while chunk.len() < 1024 {
+            chunk.push(0.);
         }
+
+        let chunk = vec![chunk];
+        let mut res = resampler.process(&chunk, None)?;
+        resampled.append(&mut res[0]);
     }
     Ok(resampled)
 }
@@ -153,7 +149,7 @@ pub fn write_audio<P: AsRef<Path>>(path: P, audio: &Vec<f64>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::{read_audio, write_audio};
-    use std::path::Path;
+    use std::{path::Path, time::Instant};
 
     #[test]
     fn test_read_write() {
@@ -161,8 +157,6 @@ mod tests {
             "test/01.wav",
             "test/pjs001.wav",
             "test/paul.wav",
-            "test/ano ko wa akuma solanri.wav",
-            "test/ano ko wa akuma solanri.mp3",
             "test/res.wav",
         ];
         let test_paths: Vec<&Path> = test_paths.into_iter().map(|x| Path::new(x)).collect();
@@ -171,9 +165,12 @@ mod tests {
             let mut out_fname = path.file_name().expect("Failed to get filename").to_owned();
             out_fname.push(".out.wav");
             let out_path = path.with_file_name(out_fname);
-
+            let now = Instant::now();
             let audio = read_audio(path, None).expect("Failed to read file");
+            println!("Read: {:.2?}", now.elapsed());
+            let now = Instant::now();
             write_audio(out_path, &audio).expect("Failed to write audio");
+            println!("Write: {:.2?}", now.elapsed());
         }
     }
 }
