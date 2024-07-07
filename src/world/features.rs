@@ -16,12 +16,33 @@ pub struct WorldFeatures {
     f0: Vec<f64>,
     mgc: Vec<Vec<f64>>,
     bap: Vec<Vec<f64>>,
-    fft_size: i32,
-    time_step: f64,
 }
 
 fn calculate_base_f0(f0: &Vec<f64>) -> f64 {
-    0.
+    let n = f0.len();
+    let mut base_f0 = 0.;
+    let mut tally = 0.;
+
+    for i in 0..n {
+        if f0[i] >= consts::F0_FLOOR && f0[i] <= consts::F0_CEIL {
+            let q = if i == 0 {
+                f0[1] - f0[0]
+            } else if i == n - 1 {
+                f0[n - 2] - f0[n - 1]
+            } else {
+                0.5 * (f0[i + 1] - f0[i - 1])
+            };
+
+            let weight = (-q * q).exp2();
+            base_f0 += f0[i] * weight;
+            tally += weight;
+        }
+    }
+
+    if tally > 0. {
+        base_f0 /= tally;
+    }
+    base_f0
 }
 
 pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<WorldFeatures> {
@@ -57,8 +78,8 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
         &sp,
         f0.len() as i32,
         consts::SAMPLE_RATE as i32,
-        cheaptrick_opts.fft_size,
-        64,
+        consts::FFT_SIZE,
+        consts::MGC_DIMS,
     );
     let bap = code_aperiodicity(&ap, f0.len() as i32, consts::SAMPLE_RATE as i32);
 
@@ -67,8 +88,6 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
         f0,
         mgc,
         bap,
-        fft_size: cheaptrick_opts.fft_size,
-        time_step: harvest_opts.frame_period,
     };
 
     let feature_path = path.as_ref().with_extension(consts::FEATURE_EXT);
@@ -96,24 +115,29 @@ mod tests {
     use crate::audio::read_write::{read_audio, write_audio};
     use crate::consts;
     use std::path::Path;
+    use std::time::Instant;
 
     #[test]
     fn test_world() {
-        let path = Path::new("test/paul.wav");
+        let path = Path::new("test/test.wav");
         let feature_path = path.with_extension(consts::FEATURE_EXT);
         let synth_path = path.with_extension("syn.wav");
         let audio = read_audio(path, None).expect("Cannot read audio");
         println!("gt: {}", audio.len());
 
+        let now = Instant::now();
         let features = generate_features(&path, audio).expect("Cannot generate WORLD features");
+        println!("Feature Generation: {:.2?}", now.elapsed());
+        let now = Instant::now();
         let features = read_features(&feature_path).expect("Cannot read WORLD features");
+        println!("Read features from file: {:.2?}", now.elapsed());
         let f0_length = features.f0.len() as i32;
 
         let mut sp = decode_spectral_envelope(
             &features.mgc,
             f0_length,
             consts::SAMPLE_RATE as i32,
-            features.fft_size,
+            consts::FFT_SIZE,
         );
         let mut ap = decode_aperiodicity(&features.bap, f0_length, consts::SAMPLE_RATE as i32);
 
@@ -122,7 +146,7 @@ mod tests {
             &features.f0,
             &sp,
             &ap,
-            features.time_step,
+            consts::FRAME_PERIOD,
             consts::SAMPLE_RATE as i32,
         );
         println!("synthesis: {}", syn.len());
