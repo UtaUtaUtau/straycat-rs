@@ -70,7 +70,15 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
         &f0,
         &mut cheaptrick_opts,
     );
-    let ap = d4c(&audio, consts::SAMPLE_RATE as i32, &t, &f0, &d4c_opts);
+    let mut ap = d4c(&audio, consts::SAMPLE_RATE as i32, &t, &f0, &d4c_opts);
+
+    for ap_slice in &mut ap {
+        for ap_val in ap_slice {
+            if ap_val.is_nan() {
+                *ap_val = 0.;
+            }
+        }
+    }
 
     let base_f0 = calculate_base_f0(&f0);
 
@@ -114,12 +122,14 @@ mod tests {
     use super::{generate_features, read_features};
     use crate::audio::read_write::{read_audio, write_audio};
     use crate::consts;
+    use std::fs::File;
+    use std::io::Write;
     use std::path::Path;
     use std::time::Instant;
 
     #[test]
     fn test_world() {
-        let path = Path::new("test/test.wav");
+        let path = Path::new("test/res.wav");
         let feature_path = path.with_extension(consts::FEATURE_EXT);
         let synth_path = path.with_extension("syn.wav");
         let audio = read_audio(path, None).expect("Cannot read audio");
@@ -133,13 +143,13 @@ mod tests {
         println!("Read features from file: {:.2?}", now.elapsed());
         let f0_length = features.f0.len() as i32;
 
-        let mut sp = decode_spectral_envelope(
+        let sp = decode_spectral_envelope(
             &features.mgc,
             f0_length,
             consts::SAMPLE_RATE as i32,
             consts::FFT_SIZE,
         );
-        let mut ap = decode_aperiodicity(&features.bap, f0_length, consts::SAMPLE_RATE as i32);
+        let ap = decode_aperiodicity(&features.bap, f0_length, consts::SAMPLE_RATE as i32);
 
         println!("{}, {}", sp.len(), sp[0].len());
         let syn = synthesis(
