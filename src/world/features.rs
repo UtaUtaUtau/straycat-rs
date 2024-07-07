@@ -71,7 +71,7 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
         time_step: harvest_opts.frame_period,
     };
 
-    let feature_path = path.as_ref().with_extension("wav.sc");
+    let feature_path = path.as_ref().with_extension(consts::FEATURE_EXT);
     let bin = bincode::serialize(&features)?;
 
     let mut feature_file = File::create(feature_path)?;
@@ -100,7 +100,7 @@ mod tests {
     #[test]
     fn test_world() {
         let path = Path::new("test/paul.wav");
-        let feature_path = path.with_extension("wav.sc");
+        let feature_path = path.with_extension(consts::FEATURE_EXT);
         let synth_path = path.with_extension("syn.wav");
         let audio = read_audio(path, None).expect("Cannot read audio");
         println!("gt: {}", audio.len());
