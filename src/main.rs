@@ -2,6 +2,7 @@ mod audio;
 mod consts;
 mod interpolator;
 mod parser;
+mod pitchbend;
 mod resample;
 mod util;
 mod world;
