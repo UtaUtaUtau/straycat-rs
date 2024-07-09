@@ -12,5 +12,5 @@ use resample::run;
 
 fn main() {
     let args = ResamplerArgs::parse();
-    run(args);
+    run(args).expect("Cannot resample");
 }
