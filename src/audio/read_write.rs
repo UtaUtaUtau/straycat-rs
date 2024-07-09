@@ -1,7 +1,5 @@
 use crate::consts;
-use crate::interpolator::interp::{Interpolator, Lanczos};
-use anyhow::{anyhow, Result};
-use biquad::{Biquad, Coefficients, DirectForm2Transposed, ToHertz};
+use anyhow::Result;
 use hound::{SampleFormat, WavSpec, WavWriter};
 use rubato::{
     Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
@@ -15,12 +13,7 @@ use symphonia::{
     default::{get_codecs, get_probe},
 };
 
-fn resample_audio(
-    audio: Vec<f64>,
-    in_fs: u32,
-    out_fs: u32,
-    lanczos_size: Option<f64>,
-) -> Result<Vec<f64>> {
+fn resample_audio(audio: Vec<f64>, in_fs: u32, out_fs: u32) -> Result<Vec<f64>> {
     let in_samples = audio.len();
     let out_samples = (in_samples as f64 * out_fs as f64 / in_fs as f64) as usize;
     let mut resampled: Vec<f64> = Vec::with_capacity(out_samples); // approx capacity
@@ -48,7 +41,7 @@ fn resample_audio(
     Ok(resampled)
 }
 
-pub fn read_audio<P: AsRef<Path>>(path: P, lanczos_size: Option<f64>) -> Result<Vec<f64>> {
+pub fn read_audio<P: AsRef<Path>>(path: P) -> Result<Vec<f64>> {
     let ext = path.as_ref().extension().unwrap().to_str().unwrap();
 
     let source = File::open(path.as_ref())?;
@@ -116,7 +109,7 @@ pub fn read_audio<P: AsRef<Path>>(path: P, lanczos_size: Option<f64>) -> Result<
     if fs == consts::SAMPLE_RATE {
         Ok(audio)
     } else {
-        resample_audio(audio, fs, consts::SAMPLE_RATE, lanczos_size)
+        resample_audio(audio, fs, consts::SAMPLE_RATE)
     }
 }
 
@@ -166,7 +159,7 @@ mod tests {
             out_fname.push(".out.wav");
             let out_path = path.with_file_name(out_fname);
             let now = Instant::now();
-            let audio = read_audio(path, None).expect("Failed to read file");
+            let audio = read_audio(path).expect("Failed to read file");
             println!("Read: {:.2?}", now.elapsed());
             let now = Instant::now();
             write_audio(out_path, &audio).expect("Failed to write audio");

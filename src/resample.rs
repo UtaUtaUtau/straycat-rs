@@ -9,7 +9,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let features = if feature_path.exists() {
         read_features(&feature_path)?
     } else {
-        let audio = read_audio(&args.in_file, None)?;
+        let audio = read_audio(&args.in_file)?;
         generate_features(&args.in_file, audio)?
     };
 

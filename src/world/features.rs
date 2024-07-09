@@ -122,8 +122,6 @@ mod tests {
     use super::{generate_features, read_features};
     use crate::audio::read_write::{read_audio, write_audio};
     use crate::consts;
-    use std::fs::File;
-    use std::io::Write;
     use std::path::Path;
     use std::time::Instant;
 
@@ -132,7 +130,7 @@ mod tests {
         let path = Path::new("test/res.wav");
         let feature_path = path.with_extension(consts::FEATURE_EXT);
         let synth_path = path.with_extension("syn.wav");
-        let audio = read_audio(path, None).expect("Cannot read audio");
+        let audio = read_audio(path).expect("Cannot read audio");
         println!("gt: {}", audio.len());
 
         let now = Instant::now();
