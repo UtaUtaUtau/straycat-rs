@@ -107,7 +107,7 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
         bap,
     };
 
-    let feature_path = path.as_ref().with_extension(consts::FEATURE_EXT);
+    let feature_path = to_feature_path(path);
     let bin = bincode::serialize(&features)?;
 
     let mut feature_file = File::create(feature_path)?;
