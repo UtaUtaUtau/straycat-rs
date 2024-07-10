@@ -4,7 +4,7 @@ use rsworld::synthesis;
 pub fn synthesize(f0: &Vec<f64>, sp: &mut Vec<Vec<f64>>, ap: &mut Vec<Vec<f64>>) -> Vec<f64> {
     for sp_frame in &mut *sp {
         for s in sp_frame {
-            *s = s.max(1e-8);
+            *s = s.max(1e-16);
         }
     }
 
