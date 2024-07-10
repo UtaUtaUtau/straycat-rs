@@ -12,10 +12,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct WorldFeatures {
-    base_f0: f64,
-    f0: Vec<f64>,
-    mgc: Vec<Vec<f64>>,
-    bap: Vec<Vec<f64>>,
+    pub base_f0: f64,
+    pub f0: Vec<f64>,
+    pub mgc: Vec<Vec<f64>>,
+    pub bap: Vec<Vec<f64>>,
 }
 
 fn calculate_base_f0(f0: &Vec<f64>) -> f64 {
@@ -70,6 +70,7 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
         &f0,
         &mut cheaptrick_opts,
     );
+
     let mut ap = d4c(&audio, consts::SAMPLE_RATE as i32, &t, &f0, &d4c_opts);
 
     for ap_slice in &mut ap {
@@ -127,7 +128,7 @@ mod tests {
 
     #[test]
     fn test_world() {
-        let path = Path::new("test/res.wav");
+        let path = Path::new("test/test.wav");
         let feature_path = path.with_extension(consts::FEATURE_EXT);
         let synth_path = path.with_extension("syn.wav");
         let audio = read_audio(path).expect("Cannot read audio");
@@ -147,6 +148,8 @@ mod tests {
             consts::SAMPLE_RATE as i32,
             consts::FFT_SIZE,
         );
+
+        println!("sp shape: ({}, {})", sp.len(), sp[0].len());
         let ap = decode_aperiodicity(&features.bap, f0_length, consts::SAMPLE_RATE as i32);
 
         println!("{}, {}", sp.len(), sp[0].len());

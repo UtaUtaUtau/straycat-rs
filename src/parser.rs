@@ -1,14 +1,13 @@
 use crate::util::{pitch_parser, tempo_parser};
 use clap::Parser;
-use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "straycat-rs")]
 #[command(version = "0.1.0")]
 #[command(about = "WORLD-based UTAU resampler on Rust.")]
 pub struct ResamplerArgs {
-    pub in_file: PathBuf,
-    pub out_file: PathBuf,
+    pub in_file: String,
+    pub out_file: String,
     #[arg(value_parser = pitch_parser)]
     pub pitch: i32,
     pub velocity: f64,

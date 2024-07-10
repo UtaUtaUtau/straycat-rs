@@ -1,5 +1,10 @@
+use crate::util;
 pub trait Interpolator {
     fn sample(&self, x: f64) -> f64;
+
+    fn sample_with_vec(&self, x: &Vec<f64>) -> Vec<f64> {
+        x.into_iter().map(|p| self.sample(*p)).collect()
+    }
 }
 
 struct CubicCoefficients {
@@ -168,9 +173,62 @@ impl Interpolator for Lanczos {
     }
 }
 
+pub enum InterpolatorType {
+    Akima,
+    CatmullRom,
+    Lanczos(Option<f64>),
+}
+
+pub fn interpolate_first_axis(
+    vec_2d: Vec<Vec<f64>>,
+    points: &Vec<f64>,
+    interpolator_type: InterpolatorType,
+) -> Vec<Vec<f64>> {
+    let mut interpolated = Vec::with_capacity(points.len());
+    let axis0_len = vec_2d.len();
+    let axis1_len = vec_2d[0].len();
+    for j in 0..axis1_len {
+        let mut axis0_vec = Vec::with_capacity(axis0_len);
+        for i in 0..axis0_len {
+            axis0_vec.push(vec_2d[i][j]);
+        }
+
+        let axis0_interpolator: Box<dyn Interpolator> = match interpolator_type {
+            InterpolatorType::Akima => Box::new(Akima::new(axis0_vec)),
+            InterpolatorType::CatmullRom => Box::new(CatmullRom::new(axis0_vec)),
+            InterpolatorType::Lanczos(q) => Box::new(Lanczos::new(axis0_vec, q)),
+        };
+
+        interpolated.push(axis0_interpolator.sample_with_vec(points))
+    }
+    util::transpose(interpolated)
+}
+
+pub fn interpolate_second_axis(
+    vec_2d: Vec<Vec<f64>>,
+    points: &Vec<f64>,
+    interpolator_type: InterpolatorType,
+) -> Vec<Vec<f64>> {
+    let mut interpolated = Vec::with_capacity(vec_2d.len());
+    for axis1_vec in vec_2d {
+        let axis1_interpolator: Box<dyn Interpolator> = match interpolator_type {
+            InterpolatorType::Akima => Box::new(Akima::new(axis1_vec)),
+            InterpolatorType::CatmullRom => Box::new(CatmullRom::new(axis1_vec)),
+            InterpolatorType::Lanczos(q) => Box::new(Lanczos::new(axis1_vec, q)),
+        };
+        interpolated.push(axis1_interpolator.sample_with_vec(points))
+    }
+    interpolated
+}
+
 #[cfg(test)]
 mod tests {
     use std::{fs::File, io::Write};
+
+    use crate::{
+        interpolator::interp,
+        util::{self, transpose},
+    };
 
     use super::{Akima, CatmullRom, Interpolator, Lanczos};
     const X: [f64; 6] = [1., 2., 4., 2., 3., 2.]; // [0., 0., 0., 0., 0.5, 4., 5., 7.5];
@@ -226,6 +284,53 @@ mod tests {
                 csv.write_all(format!("{},{}\n", i, y).as_bytes())
                     .expect("Cannot write to file");
             }
+        }
+    }
+
+    #[test]
+    fn test_2d_interp() {
+        let mut test_2d = Vec::with_capacity(16);
+        for i in 0..16 {
+            test_2d.push(vec![
+                i as f64,
+                (i + 1) as f64,
+                (i + 2) as f64,
+                (i + 3) as f64,
+            ]);
+        }
+        println!("test shape: ({}, {})", test_2d.len(), test_2d[0].len());
+
+        let mut interpolated = Vec::with_capacity(32);
+        for j in 0..4 {
+            let mut axis_vec = Vec::with_capacity(16);
+            for i in 0..15 {
+                axis_vec.push(test_2d[i][j]);
+            }
+
+            let axis_interp = CatmullRom::new(axis_vec);
+            let mut axis_interpolated = Vec::with_capacity(32);
+            for i in 0..32 {
+                axis_interpolated.push(axis_interp.sample(i as f64 / 2.));
+            }
+            interpolated.push(axis_interpolated);
+        }
+        let interpolated = transpose(interpolated);
+        println!(
+            "interpolated shape: ({}, {})",
+            interpolated.len(),
+            interpolated[0].len()
+        );
+
+        for i in 0..16 {
+            let line: Vec<String> = test_2d[i].iter().map(|x| format!("{}", x)).collect();
+            let line = line.join(", ");
+            println!("{}", line);
+        }
+
+        for i in 0..32 {
+            let line: Vec<String> = interpolated[i].iter().map(|x| format!("{}", x)).collect();
+            let line = line.join(", ");
+            println!("{}", line);
         }
     }
 }
