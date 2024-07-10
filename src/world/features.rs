@@ -20,7 +20,7 @@ pub struct WorldFeatures {
 
 pub fn to_feature_path<P: AsRef<Path>>(path: P) -> PathBuf {
     let path = path.as_ref();
-    let mut fname = path.file_name().unwrap().to_owned();
+    let mut fname = path.file_stem().unwrap().to_owned();
     fname.push("_wav");
     path.with_file_name(fname)
         .with_extension(consts::FEATURE_EXT)
