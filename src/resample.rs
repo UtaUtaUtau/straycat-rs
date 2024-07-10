@@ -65,9 +65,14 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         .iter()
         .map(|x| x / fps)
         .collect();
+    let feature_length_sec = feature_length as f64 / fps;
     let start = args.offset / 1000.;
     let end = args.cutoff / 1000.;
-    let end = if end < 0. { start - end } else { -end };
+    let end = if end < 0. {
+        start - end
+    } else {
+        feature_length_sec - end
+    };
     let consonant = start + args.consonant / 1000.;
 
     println!("Preparing interpolation.");
