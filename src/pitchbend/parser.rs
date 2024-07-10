@@ -77,7 +77,7 @@ pub fn pitch_string_to_cents<S: AsRef<str>>(pitch_string: S, base_pitch: f64) ->
         }
     }
 
-    let mut pitchbend: Vec<f64> = pitchbend
+    let pitchbend: Vec<f64> = pitchbend
         .into_iter()
         .map(|x| {
             if flat_pitch {
@@ -87,9 +87,6 @@ pub fn pitch_string_to_cents<S: AsRef<str>>(pitch_string: S, base_pitch: f64) ->
             }
         })
         .collect();
-    if !flat_pitch {
-        pitchbend.push(base_pitch);
-    }
     Ok(pitchbend)
 }
 

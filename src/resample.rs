@@ -103,7 +103,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let render_length = t_render.len();
 
     println!("Interpolating WORLD features.");
-    let f0_off_interp = interp::CatmullRom::new(f0_off);
+    let f0_off_interp = interp::Akima::new(f0_off);
 
     let f0_off_render = f0_off_interp.sample_with_vec(&t_render);
     let mut sp_render =
@@ -118,7 +118,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     println!("Interpreting pitchbend.");
     let pitch = pitchbend::parser::pitch_string_to_cents(args.pitchbend, args.pitch as f64)?;
     let pps = 8. * args.tempo / 5.;
-    let pitch_interp = interp::CatmullRom::new(pitch);
+    let pitch_interp = interp::Akima::new(pitch);
     let t_pitch: Vec<f64> = t_sec.iter().map(|x| x * pps).collect();
     let pitch_render = pitch_interp.sample_with_vec(&t_pitch);
 
