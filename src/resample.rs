@@ -91,7 +91,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         let len_idx = (length_req * fps) as usize;
         t_features[con_idx..con_idx + len_idx].to_vec()
     } else {
-        crate::util::linspace(consonant, end, (length_req * fps) as usize, true)
+        util::linspace(consonant, end, (length_req * fps) as usize, true)
     };
     let consonant_index = t_consonant.len();
 
@@ -117,7 +117,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
 
     println!("Interpreting pitchbend.");
     let pitch = pitchbend::parser::pitch_string_to_cents(args.pitchbend, args.pitch as f64)?;
-    let pps = 96. * args.tempo / 60.;
+    let pps = 8. * args.tempo / 5.;
     let pitch_interp = interp::CatmullRom::new(pitch);
     let t_pitch: Vec<f64> = t_sec.iter().map(|x| x * pps).collect();
     let pitch_render = pitch_interp.sample_with_vec(&t_pitch);
