@@ -9,4 +9,4 @@ pub const FFT_SIZE: i32 = 2048;
 pub const D4C_THRESHOLD: f64 = 0.1;
 pub const MGC_DIMS: i32 = 64;
 // If you want to change the extension for some reason
-pub const FEATURE_EXT: &'static str = "wav.sc";
+pub const FEATURE_EXT: &'static str = "sc";

@@ -4,7 +4,7 @@ use crate::audio::read_write::{read_audio, write_audio};
 use crate::interpolator::interp::{self, Interpolator};
 use crate::parser::ResamplerArgs;
 use crate::util;
-use crate::world::features::{generate_features, read_features};
+use crate::world::features::{generate_features, read_features, to_feature_path};
 use crate::world::synthesis::synthesize;
 use crate::{consts, pitchbend};
 use anyhow::Result;
@@ -13,7 +13,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let generate_only = &args.out_file == "nul";
 
     let in_file = Path::new(&args.in_file);
-    let feature_path = in_file.with_extension(consts::FEATURE_EXT);
+    let feature_path = to_feature_path(in_file);
     let features = if !feature_path.exists() || generate_only {
         println!("Generating features.");
         let audio = read_audio(&args.in_file)?;
@@ -29,7 +29,6 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     }
 
     let out_file = Path::new(&args.out_file);
-    let out_feature_path = out_file.with_extension(consts::FEATURE_EXT);
     let velocity = (1. - args.velocity / 100.).exp2();
     let volume = args.volume / 100.;
     let modulation = args.modulation / 100.;

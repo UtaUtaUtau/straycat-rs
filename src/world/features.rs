@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::{Read, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use crate::consts;
@@ -16,6 +16,14 @@ pub struct WorldFeatures {
     pub f0: Vec<f64>,
     pub mgc: Vec<Vec<f64>>,
     pub bap: Vec<Vec<f64>>,
+}
+
+pub fn to_feature_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    let path = path.as_ref();
+    let mut fname = path.file_name().unwrap().to_owned();
+    fname.push("_wav");
+    path.with_file_name(fname)
+        .with_extension(consts::FEATURE_EXT)
 }
 
 fn calculate_base_f0(f0: &Vec<f64>) -> f64 {
