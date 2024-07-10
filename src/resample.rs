@@ -29,6 +29,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     }
 
     let out_file = Path::new(&args.out_file);
+    let out_feature_path = out_file.with_extension(consts::FEATURE_EXT);
     let velocity = (1. - args.velocity / 100.).exp2();
     let volume = args.volume / 100.;
     let modulation = args.modulation / 100.;

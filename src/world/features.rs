@@ -123,6 +123,8 @@ mod tests {
     use super::{generate_features, read_features};
     use crate::audio::read_write::{read_audio, write_audio};
     use crate::consts;
+    use std::fs::File;
+    use std::io::Write;
     use std::path::Path;
     use std::time::Instant;
 
@@ -163,5 +165,60 @@ mod tests {
         println!("synthesis: {}", syn.len());
 
         write_audio(synth_path, &syn);
+    }
+
+    #[test]
+    fn test_decode_features() {
+        let test_path =
+            r"F:\funny personal\utau folder\demo usts\あめふり.cache\35_i+ぴ_C5_dDhIWv.wav.sc";
+        let features = read_features(test_path).expect("Cannot read features");
+
+        let ap = decode_aperiodicity(
+            &features.bap,
+            features.f0.len() as i32,
+            consts::SAMPLE_RATE as i32,
+        );
+
+        let mut ap_file = File::create("test/ap.csv").expect("Cannot create file");
+        let ap_csv = ap
+            .into_iter()
+            .map(|line| {
+                line.into_iter()
+                    .map(|x| format!("{}", x))
+                    .collect::<Vec<String>>()
+                    .join(",")
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        ap_file.write_all(ap_csv.as_bytes()).expect("Cannot write");
+
+        let sp = decode_spectral_envelope(
+            &features.mgc,
+            features.f0.len() as i32,
+            consts::SAMPLE_RATE as i32,
+            consts::FFT_SIZE,
+        );
+
+        let mut sp_file = File::create("test/sp.csv").expect("Cannot create file");
+        let sp_csv = sp
+            .into_iter()
+            .map(|line| {
+                line.into_iter()
+                    .map(|x| format!("{}", x))
+                    .collect::<Vec<String>>()
+                    .join(",")
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        sp_file.write_all(sp_csv.as_bytes()).expect("Cannot write");
+
+        let mut f0_file = File::create("test/f0.csv").expect("Cannot create file");
+        let f0_csv = features
+            .f0
+            .iter()
+            .map(|x| format!("{}", x))
+            .collect::<Vec<String>>()
+            .join("\n");
+        f0_file.write_all(f0_csv.as_bytes()).expect("Cannot write");
     }
 }
