@@ -184,24 +184,11 @@ pub fn interpolate_first_axis(
     points: &Vec<f64>,
     interpolator_type: InterpolatorType,
 ) -> Vec<Vec<f64>> {
-    let mut interpolated = Vec::with_capacity(points.len());
-    let axis0_len = vec_2d.len();
-    let axis1_len = vec_2d[0].len();
-    for j in 0..axis1_len {
-        let mut axis0_vec = Vec::with_capacity(axis0_len);
-        for i in 0..axis0_len {
-            axis0_vec.push(vec_2d[i][j]);
-        }
-
-        let axis0_interpolator: Box<dyn Interpolator> = match interpolator_type {
-            InterpolatorType::Akima => Box::new(Akima::new(axis0_vec)),
-            InterpolatorType::CatmullRom => Box::new(CatmullRom::new(axis0_vec)),
-            InterpolatorType::Lanczos(q) => Box::new(Lanczos::new(axis0_vec, q)),
-        };
-
-        interpolated.push(axis0_interpolator.sample_with_vec(points))
-    }
-    util::transpose(interpolated)
+    util::transpose(interpolate_second_axis(
+        util::transpose(vec_2d),
+        points,
+        interpolator_type,
+    ))
 }
 
 pub fn interpolate_second_axis(
