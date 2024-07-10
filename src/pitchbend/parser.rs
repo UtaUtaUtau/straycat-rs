@@ -88,7 +88,7 @@ pub fn pitch_string_to_cents<S: AsRef<str>>(pitch_string: S, base_pitch: f64) ->
         })
         .collect();
     if !flat_pitch {
-        pitchbend.push(0.);
+        pitchbend.push(base_pitch);
     }
     Ok(pitchbend)
 }
