@@ -2,7 +2,7 @@
  A Rust port of straycat, a WORLD-based UTAU resampler
 
 # How to use
- Download the [latest version](https://github.com/UtaUtaUtau/straycat-rs/releases/latest/download/straycat-rs.exe) of straycat-rs and use it like a regular UTAU resampler.
+ Download the [latest version](https://github.com/UtaUtaUtau/straycat-rs/releases/download/1.0.0-alpha/straycat-rs.exe) of straycat-rs and use it like a regular UTAU resampler.
 # How to compile
  **Note**: By the nature of an UTAU resampler, it is only ideal to build this program in Windows.
  1. Install [rustup](https://rustup.rs/).
