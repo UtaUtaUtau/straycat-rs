@@ -2,6 +2,7 @@ use crate::consts;
 use rsworld::synthesis;
 
 pub fn synthesize(f0: &Vec<f64>, sp: &mut Vec<Vec<f64>>, ap: &mut Vec<Vec<f64>>) -> Vec<f64> {
+    // Synthesize from WORLD features, ensuring features are within WORLD's restrictions
     for sp_frame in &mut *sp {
         for s in sp_frame {
             *s = s.max(1e-16);

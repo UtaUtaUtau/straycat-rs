@@ -1,6 +1,7 @@
 use crate::util::{pitch_parser, tempo_parser};
 use clap::Parser;
 
+// Basic resampler args parser
 #[derive(Parser)]
 #[command(name = "straycat-rs")]
 #[command(version = "0.1.0")]

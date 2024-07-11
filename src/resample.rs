@@ -116,7 +116,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         .collect();
 
     println!("Interpreting pitchbend.");
-    let pitch = pitchbend::parser::pitch_string_to_cents(args.pitchbend, args.pitch as f64)?;
+    let pitch = pitchbend::parser::pitch_string_to_midi(args.pitchbend, args.pitch as f64)?;
     let pps = 8. * args.tempo / 5.;
     let pitch_interp = interp::Akima::new(pitch);
     let t_pitch: Vec<f64> = t_sec.iter().map(|x| x * pps).collect();

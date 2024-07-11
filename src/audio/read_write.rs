@@ -14,9 +14,11 @@ use symphonia::{
 };
 
 fn resample_audio(audio: Vec<f64>, in_fs: u32, out_fs: u32) -> Result<Vec<f64>> {
+    // Resample audio to working sample rate
+    // UTAU only works in 44.1kHz I can do this
     let in_samples = audio.len();
-    let out_samples = (in_samples as f64 * out_fs as f64 / in_fs as f64) as usize;
-    let mut resampled: Vec<f64> = Vec::with_capacity(out_samples); // approx capacity
+    let out_samples = (in_samples as f64 * out_fs as f64 / in_fs as f64) as usize; // Approximate capacity. Rubato might not exactly match it
+    let mut resampled: Vec<f64> = Vec::with_capacity(out_samples);
 
     let resampler_params = SincInterpolationParameters {
         sinc_len: 256,
@@ -28,9 +30,11 @@ fn resample_audio(audio: Vec<f64>, in_fs: u32, out_fs: u32) -> Result<Vec<f64>> 
     let mut resampler =
         SincFixedIn::<f64>::new(out_fs as f64 / in_fs as f64, 2., resampler_params, 1024, 1)?;
 
+    // Resample per 1024 sample chunks
     for i in 0..in_samples / 1024 {
         let mut chunk = audio[i * 1024..i * 1024 + 1024].to_vec();
         while chunk.len() < 1024 {
+            // Pad zeros if chunk length < resampler requirement
             chunk.push(0.);
         }
 
@@ -42,6 +46,8 @@ fn resample_audio(audio: Vec<f64>, in_fs: u32, out_fs: u32) -> Result<Vec<f64>> 
 }
 
 pub fn read_audio<P: AsRef<Path>>(path: P) -> Result<Vec<f64>> {
+    // Read audio supporting most filetypes
+    // Code based off of https://github.com/pdeljanov/Symphonia/blob/master/symphonia/examples/basic-interleaved.rs
     let ext = path.as_ref().extension().unwrap().to_str().unwrap();
 
     let source = File::open(path.as_ref())?;
@@ -94,6 +100,7 @@ pub fn read_audio<P: AsRef<Path>>(path: P) -> Result<Vec<f64>> {
                     buffer.copy_interleaved_ref(decoded_packet);
                     let samples = buffer.samples();
                     for s in 0..samples.len() / channels {
+                        // Average all channels if not mono
                         let mut a = 0.;
                         for c in 0..channels {
                             a += samples[s * channels + c];
@@ -109,11 +116,13 @@ pub fn read_audio<P: AsRef<Path>>(path: P) -> Result<Vec<f64>> {
     if fs == consts::SAMPLE_RATE {
         Ok(audio)
     } else {
-        resample_audio(audio, fs, consts::SAMPLE_RATE)
+        resample_audio(audio, fs, consts::SAMPLE_RATE) // Resample if not 44.1kHz
     }
 }
 
 pub fn write_audio<P: AsRef<Path>>(path: P, audio: &Vec<f64>) -> Result<()> {
+    // Write audio as 44.1kHz 16-bit WAV
+    // UTAU also only works with this specific WAV encoding
     let out_spec = WavSpec {
         channels: 1,
         sample_rate: consts::SAMPLE_RATE,

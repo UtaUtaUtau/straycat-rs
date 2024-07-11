@@ -1,5 +1,6 @@
 use crate::util;
 pub trait Interpolator {
+    // basic interpolator trait, uniform interpolation only
     fn sample(&self, x: f64) -> f64;
 
     fn sample_with_vec(&self, x: &Vec<f64>) -> Vec<f64> {
@@ -8,6 +9,7 @@ pub trait Interpolator {
 }
 
 struct CubicCoefficients {
+    // store coefficients for cubic equations
     pub a: f64,
     pub b: f64,
     pub c: f64,
@@ -15,12 +17,15 @@ struct CubicCoefficients {
 }
 
 pub struct Akima {
+    // Akima interpolator
     curve: Vec<f64>,
     coeffs: Vec<CubicCoefficients>,
 }
 
 impl Akima {
     pub fn new(curve: Vec<f64>) -> Self {
+        // Calculations based on scipy implementation https://github.com/scipy/scipy/blob/v1.14.0/scipy/interpolate/_cubic.py#L395-L581
+        // and Wikipedia article https://en.wikipedia.org/wiki/Akima_spline
         let n = curve.len() - 1;
         let mut coeffs: Vec<CubicCoefficients> = Vec::with_capacity(n);
         let mut m: Vec<f64> = Vec::with_capacity(n + 4);
@@ -30,6 +35,7 @@ impl Akima {
             m.push(curve[i + 1] - curve[i]);
         }
 
+        // Derivatives for first and last points are set to zero, the only modification to Akima spline made here
         m.insert(0, 0.);
         m.insert(0, 0.);
         m.push(0.);
@@ -78,12 +84,14 @@ impl Interpolator for Akima {
 }
 
 pub struct CatmullRom {
+    // Catmull-Rom spline
     curve: Vec<f64>,
     coeffs: Vec<CubicCoefficients>,
 }
 
 impl CatmullRom {
     pub fn new(curve: Vec<f64>) -> Self {
+        // Calculations based on https://www.paulinternet.nl/?page=bicubic
         let n = curve.len() - 1;
         let mut coeffs = Vec::with_capacity(n);
         let mut p = Vec::with_capacity(n + 2);
@@ -127,8 +135,9 @@ impl Interpolator for CatmullRom {
 }
 
 pub struct Lanczos {
+    // Lanczos interpolation
     curve: Vec<f64>,
-    q: f64,
+    q: f64, // Window size...?
 }
 
 impl Lanczos {
@@ -179,6 +188,7 @@ pub enum InterpolatorType {
     Lanczos(Option<f64>),
 }
 
+// Tools for interpolating 2D Vecs
 pub fn interpolate_first_axis(
     vec_2d: Vec<Vec<f64>>,
     points: &Vec<f64>,
@@ -212,10 +222,7 @@ pub fn interpolate_second_axis(
 mod tests {
     use std::{fs::File, io::Write};
 
-    use crate::{
-        interpolator::interp,
-        util::{self, transpose},
-    };
+    use crate::util::transpose;
 
     use super::{Akima, CatmullRom, Interpolator, Lanczos};
     const X: [f64; 6] = [1., 2., 4., 2., 3., 2.]; // [0., 0., 0., 0., 0.5, 4., 5., 7.5];

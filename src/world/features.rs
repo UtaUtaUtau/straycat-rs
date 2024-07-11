@@ -12,13 +12,16 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct WorldFeatures {
+    // for UTAU modulation
     pub base_f0: f64,
+    // Actual WORLD features
     pub f0: Vec<f64>,
     pub mgc: Vec<Vec<f64>>,
     pub bap: Vec<Vec<f64>>,
 }
 
 pub fn to_feature_path<P: AsRef<Path>>(path: P) -> PathBuf {
+    // Converts any path to the feature file path
     let path = path.as_ref();
     let mut fname = path.file_stem().unwrap().to_owned();
     fname.push("_wav");
@@ -27,6 +30,7 @@ pub fn to_feature_path<P: AsRef<Path>>(path: P) -> PathBuf {
 }
 
 fn calculate_base_f0(f0: &Vec<f64>) -> f64 {
+    // Get base F0. Averages the whole F0 curve with strong bias on flat areas.
     let n = f0.len();
     let mut base_f0 = 0.;
     let mut tally = 0.;
@@ -41,7 +45,7 @@ fn calculate_base_f0(f0: &Vec<f64>) -> f64 {
                 0.5 * (f0[i + 1] - f0[i - 1])
             };
 
-            let weight = (-q * q).exp2();
+            let weight = (-q * q).exp2(); // Quicker bell curve
             base_f0 += f0[i] * weight;
             tally += weight;
         }
@@ -54,6 +58,7 @@ fn calculate_base_f0(f0: &Vec<f64>) -> f64 {
 }
 
 pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<WorldFeatures> {
+    // Generate all required WORLD features
     let harvest_opts = HarvestOption {
         f0_floor: consts::F0_FLOOR,
         f0_ceil: consts::F0_CEIL,
@@ -81,6 +86,8 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
 
     let mut ap = d4c(&audio, consts::SAMPLE_RATE as i32, &t, &f0, &d4c_opts);
 
+    // Ensure no NaNs are present in AP. Happens when a signal doesn't have higher frequencies.
+    // It should be safe to assume that it does not have aperiodicity in those frequencies.
     for ap_slice in &mut ap {
         for ap_val in ap_slice {
             if ap_val.is_nan() {
@@ -91,6 +98,7 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
 
     let base_f0 = calculate_base_f0(&f0);
 
+    // Code features to reduce feature file size
     let mgc = code_spectral_envelope(
         &sp,
         f0.len() as i32,
@@ -116,6 +124,7 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
 }
 
 pub fn read_features<P: AsRef<Path>>(path: P) -> Result<WorldFeatures> {
+    // Read WORLD feature file
     let mut bin = Vec::new();
     let mut f = File::open(path)?;
     f.read_to_end(&mut bin)?;
@@ -172,7 +181,7 @@ mod tests {
         );
         println!("synthesis: {}", syn.len());
 
-        write_audio(synth_path, &syn);
+        write_audio(synth_path, &syn).expect("Cannot write");
     }
 
     #[test]

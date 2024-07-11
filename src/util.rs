@@ -1,6 +1,7 @@
 use anyhow::Result;
 use regex::Regex;
 
+// Rust versions of some numpy operations
 pub fn arange(end: i32) -> Vec<f64> {
     (0..end).map(|x| x as f64).collect()
 }
@@ -18,25 +19,32 @@ pub fn linspace(start: f64, end: f64, num: usize, endpoint: bool) -> Vec<f64> {
     result
 }
 
-pub fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>>
-where
-    T: Copy,
-{
-    (0..v[0].len())
-        .map(|j| (0..v.len()).map(|i| v[i][j]).collect())
+pub fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
+    let len = v[0].len();
+    let mut iters: Vec<_> = v.into_iter().map(|n| n.into_iter()).collect();
+    (0..len)
+        .map(|_| {
+            iters
+                .iter_mut()
+                .map(|n| n.next().unwrap())
+                .collect::<Vec<T>>()
+        })
         .collect()
 }
 
 pub fn midi_to_hz(x: f64) -> f64 {
+    // Convert MIDI numbers to Hertz
     440. * ((x - 69.) / 12.).exp2()
 }
 
 pub fn tempo_parser(arg: &str) -> Result<f64> {
+    // Parse tempo argument
     let tempo: f64 = arg[1..].parse()?;
     Ok(tempo)
 }
 
 pub fn pitch_parser(arg: &str) -> Result<i32> {
+    // Parse pitch argument
     let note_regex = Regex::new(r"([A-G]#?)(-?\d+)")?;
     let captures = note_regex.captures(arg).unwrap();
 
