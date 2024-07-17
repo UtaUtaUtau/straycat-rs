@@ -158,7 +158,8 @@ mod tests {
         println!("gt: {}", audio.len());
 
         let now = Instant::now();
-        let features = generate_features(&path, audio).expect("Cannot generate WORLD features");
+        let features =
+            generate_features(&path, audio, None).expect("Cannot generate WORLD features");
         println!("Feature Generation: {:.2?}", now.elapsed());
         let now = Instant::now();
         let features = read_features(&feature_path).expect("Cannot read WORLD features");

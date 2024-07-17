@@ -44,6 +44,12 @@ pub fn tempo_parser(arg: &str) -> Result<f64> {
 }
 
 pub fn pitch_parser(arg: &str) -> Result<i32> {
+    // Fallback integer parse just for the frq generation args
+    let integer = arg.parse::<i32>();
+    match integer {
+        Ok(v) => return Ok(v),
+        Err(_) => (),
+    }
     // Parse pitch argument
     let note_regex = Regex::new(r"([A-G]#?)(-?\d+)")?;
     let captures = note_regex.captures(arg).unwrap();
