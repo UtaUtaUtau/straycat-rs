@@ -57,7 +57,11 @@ fn calculate_base_f0(f0: &Vec<f64>) -> f64 {
     base_f0
 }
 
-pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<WorldFeatures> {
+pub fn generate_features<P: AsRef<Path>>(
+    path: P,
+    audio: Vec<f64>,
+    threshold: Option<f64>,
+) -> Result<WorldFeatures> {
     // Generate all required WORLD features
     let harvest_opts = HarvestOption {
         f0_floor: consts::F0_FLOOR,
@@ -72,7 +76,7 @@ pub fn generate_features<P: AsRef<Path>>(path: P, audio: Vec<f64>) -> Result<Wor
     };
 
     let d4c_opts = D4COption {
-        threshold: consts::D4C_THRESHOLD,
+        threshold: threshold.unwrap_or(consts::D4C_THRESHOLD),
     };
 
     let (t, f0) = harvest(&audio, consts::SAMPLE_RATE as i32, &harvest_opts);

@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::audio::read_write::{read_audio, write_audio};
+use crate::flags::parser::Flags;
 use crate::interpolator::interp::{self, Interpolator};
 use crate::parser::ResamplerArgs;
 use crate::util;
@@ -10,20 +11,32 @@ use crate::{consts, pitchbend};
 use anyhow::Result;
 
 pub fn run(args: ResamplerArgs) -> Result<()> {
-    let generate_only = &args.out_file == "nul";
+    let null_out = &args.out_file == "nul";
+    let flags: Flags = args.flags.parse()?;
 
     let in_file = Path::new(&args.in_file);
     let feature_path = to_feature_path(in_file);
-    let features = if !feature_path.exists() || generate_only {
+
+    if let Some(threshold) = flags.generate_features {
+        let threshold = threshold * 0.01;
+        println!(
+            "Forcing feature generation with D4C threshold {}.",
+            threshold
+        );
+        let audio = read_audio(&args.in_file)?;
+        generate_features(&args.in_file, audio, Some(threshold))?;
+    }
+
+    let features = if !feature_path.exists() {
         println!("Generating features.");
         let audio = read_audio(&args.in_file)?;
-        generate_features(&args.in_file, audio)?
+        generate_features(&args.in_file, audio, None)?
     } else {
         println!("Reading features.");
         read_features(&feature_path)?
     };
 
-    if generate_only {
+    if null_out {
         println!("Null output file. Skipping.");
         return Ok(());
     }
