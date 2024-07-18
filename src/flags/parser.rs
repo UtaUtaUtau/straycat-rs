@@ -200,8 +200,8 @@ mod tests {
 
     #[test]
     fn test_flags() {
-        let flag = "fe100fo10G";
-        let flags: Flags = flag.parse().expect("Cannot parse flags");
+        let flag = "f/e1000t100";
+        let flags: Flags = flag.replace("/", "").parse().expect("Cannot parse flags");
         println!("{:#?}", flags);
     }
 }

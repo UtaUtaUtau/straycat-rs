@@ -32,6 +32,17 @@ pub fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
         .collect()
 }
 
+// smoothstep
+pub fn smoothstep(s: f64, e: f64, x: f64) -> f64 {
+    let x = ((x - s) / (e - s)).clamp(0., 1.);
+
+    x * x * (3. - 2. * x)
+}
+
+pub fn lerp(a: f64, b: f64, t: f64) -> f64 {
+    a * (1. - t) + b * t
+}
+
 pub fn midi_to_hz(x: f64) -> f64 {
     // Convert MIDI numbers to Hertz
     440. * ((x - 69.) / 12.).exp2()

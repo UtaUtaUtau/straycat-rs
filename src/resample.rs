@@ -4,7 +4,7 @@ use crate::audio::read_write::{read_audio, write_audio};
 use crate::flags::parser::Flags;
 use crate::interpolator::interp::{self, Interpolator};
 use crate::parser::ResamplerArgs;
-use crate::util;
+use crate::util::{self, smoothstep};
 use crate::world::features::{generate_features, read_features, to_feature_path};
 use crate::world::synthesis::synthesize;
 use crate::{consts, pitchbend};
@@ -12,7 +12,7 @@ use anyhow::Result;
 
 pub fn run(args: ResamplerArgs) -> Result<()> {
     let null_out = &args.out_file == "nul"; // null file from Initialize freq. map args
-    let flags: Flags = args.flags.parse()?; // parse flags
+    let flags: Flags = args.flags.replace("/", "").parse()?; // parse flags
 
     // input file and feature file
     let in_file = Path::new(&args.in_file);
@@ -20,7 +20,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
 
     // force generate feature file if enabled
     if let Some(threshold) = flags.generate_features {
-        let threshold = threshold * 0.01;
+        let threshold = threshold / 100.;
         println!(
             "Forcing feature generation with D4C threshold {}.",
             threshold
@@ -53,6 +53,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     println!("Decoding WORLD features.");
 
     let feature_length = features.f0.len();
+    let feature_dim = consts::FFT_SIZE / 2 + 1;
     let sp = rsworld::decode_spectral_envelope(
         &features.mgc,
         feature_length as i32,
@@ -110,7 +111,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     } else {
         util::linspace(consonant, end, (length_req * fps) as usize, true)
     };
-    let consonant_index = t_consonant.len(); // index where the consonant is placed
+    let consonant = velocity * args.consonant / 1000.; // timestamp of consonant in the render
 
     let t_render: Vec<f64> = t_consonant
         .into_iter()
@@ -140,7 +141,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let pitch = pitchbend::parser::pitch_string_to_midi(
         args.pitchbend,
         args.pitch as f64,
-        flags.pitch_offset,
+        flags.pitch_offset / 100.,
     )?;
     let pps = 8. * args.tempo / 5.; // pitchbend points per second
     let pitch_interp = interp::Akima::new(pitch);
@@ -150,6 +151,33 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let mut f0_render = Vec::with_capacity(render_length);
     for i in 0..render_length {
         f0_render.push(util::midi_to_hz(pitch_render[i]) + f0_off_render[i] * modulation);
+    }
+
+    if flags.fry_enable != 0. {
+        println!("Applying fry.");
+        let fry_length = flags.fry_enable / 1000.;
+        let fry_transition = 0.5 * flags.fry_transition / 1000.;
+        let fry_offset = flags.fry_offset / 1000.;
+        let fry_volume = flags.fry_volume / 100.;
+
+        for i in 0..render_length {
+            let t = t_sec[i] - consonant - fry_offset;
+            let amt = smoothstep(
+                -fry_length - fry_transition,
+                -fry_length + fry_transition,
+                t,
+            ) * smoothstep(fry_transition, -fry_transition, t);
+            f0_render[i] = util::lerp(f0_render[i], flags.fry_pitch, amt);
+            let sp_frame = &mut sp_render[i];
+            let ap_frame = &ap_render[i];
+            for j in 0..feature_dim as usize {
+                sp_frame[j] *= util::lerp(1., 1. - ap_frame[j] * ap_frame[j], amt);
+            }
+            sp_render[i]
+                .iter_mut()
+                .chain(ap_render[i].iter_mut())
+                .for_each(|x| *x *= util::lerp(1., fry_volume, amt));
+        }
     }
 
     let syn: Vec<f64> = synthesize(&f0_render, &mut sp_render, &mut ap_render)
