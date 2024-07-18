@@ -9,7 +9,7 @@
  2. Decide whether you want to build with the icon.
     - Build with icon:
         1. Install [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/).
-        2. Locate `rc.exe`. It is usually in `C:\Program Files (x86)\Windows Kits\10\bin\<version number>\x86\rc.exe`
+        2. Locate `rc.exe`. It is usually in `C:\Program Files (x86)\Windows Kits\10\bin\<version number>\x64\rc.exe`
         3. Replace the location for `rc.exe` in the build script `build.rs`.
         4. Build with `cargo build -r`
     - Build without icon:
