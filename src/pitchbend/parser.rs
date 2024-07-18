@@ -46,7 +46,11 @@ fn to_int12_stream<S: AsRef<str>>(b64: S) -> Result<Vec<i16>> {
     Ok(stream)
 }
 
-pub fn pitch_string_to_midi<S: AsRef<str>>(pitch_string: S, base_pitch: f64) -> Result<Vec<f64>> {
+pub fn pitch_string_to_midi<S: AsRef<str>>(
+    pitch_string: S,
+    base_pitch: f64,
+    pitch_offset: f64,
+) -> Result<Vec<f64>> {
     // UTAU pitchbend argument to MIDI
     let pitch_string = pitch_string.as_ref();
     let mut pitchbend: Vec<i16> = Vec::new();
@@ -82,9 +86,9 @@ pub fn pitch_string_to_midi<S: AsRef<str>>(pitch_string: S, base_pitch: f64) -> 
         .into_iter()
         .map(|x| {
             if flat_pitch {
-                base_pitch
+                base_pitch + pitch_offset
             } else {
-                x as f64 / 100. + base_pitch
+                x as f64 / 100. + base_pitch + pitch_offset
             }
         })
         .collect();
@@ -98,7 +102,7 @@ mod tests {
     #[test]
     fn test_pitch_string() {
         let test = "B7CPCVCVCTCQCNCICDB+B5B0BvBrBnBlBk#14#BjBF/++Y8k615d4p4f4l4y5G5f596e7B7l8H8n9D9Z9q9092919y9t9n9f9Y9Q9I9C898584858/9L9b9v+G+f+4/Q/m/5AIATAY#2#AWAUARAOALAHAFACABAA";
-        let pitchbend = pitch_string_to_midi(&test, 60.).expect("Failed to parse");
+        let pitchbend = pitch_string_to_midi(&test, 60., 0.).expect("Failed to parse");
         for p in &pitchbend {
             println!("{}", p);
         }

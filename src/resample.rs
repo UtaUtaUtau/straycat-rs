@@ -11,12 +11,14 @@ use crate::{consts, pitchbend};
 use anyhow::Result;
 
 pub fn run(args: ResamplerArgs) -> Result<()> {
-    let null_out = &args.out_file == "nul";
-    let flags: Flags = args.flags.parse()?;
+    let null_out = &args.out_file == "nul"; // null file from Initialize freq. map args
+    let flags: Flags = args.flags.parse()?; // parse flags
 
+    // input file and feature file
     let in_file = Path::new(&args.in_file);
     let feature_path = to_feature_path(in_file);
 
+    // force generate feature file if enabled
     if let Some(threshold) = flags.generate_features {
         let threshold = threshold * 0.01;
         println!(
@@ -27,6 +29,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         generate_features(&args.in_file, audio, Some(threshold))?;
     }
 
+    // generate feature file if it doesn't exist
     let features = if !feature_path.exists() {
         println!("Generating features.");
         let audio = read_audio(&args.in_file)?;
@@ -36,15 +39,16 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         read_features(&feature_path)?
     };
 
+    // skip null output
     if null_out {
         println!("Null output file. Skipping.");
         return Ok(());
     }
 
-    let out_file = Path::new(&args.out_file);
-    let velocity = (1. - args.velocity / 100.).exp2();
-    let volume = args.volume / 100.;
-    let modulation = args.modulation / 100.;
+    let out_file = Path::new(&args.out_file); // output file
+    let velocity = (1. - args.velocity / 100.).exp2(); // velocity as stretch
+    let volume = args.volume / 100.; // volume
+    let modulation = args.modulation / 100.; // mod
 
     println!("Decoding WORLD features.");
 
@@ -73,7 +77,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         .collect();
 
     println!("Calculating timing.");
-    let fps = 1000. / consts::FRAME_PERIOD;
+    let fps = 1000. / consts::FRAME_PERIOD; // WORLD frames per second
     let t_features: Vec<f64> = util::arange(feature_length as i32)
         .iter()
         .map(|x| x / fps)
@@ -106,7 +110,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     } else {
         util::linspace(consonant, end, (length_req * fps) as usize, true)
     };
-    let consonant_index = t_consonant.len();
+    let consonant_index = t_consonant.len(); // index where the consonant is placed
 
     let t_render: Vec<f64> = t_consonant
         .into_iter()
@@ -129,8 +133,16 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         .collect();
 
     println!("Interpreting pitchbend.");
-    let pitch = pitchbend::parser::pitch_string_to_midi(args.pitchbend, args.pitch as f64)?;
-    let pps = 8. * args.tempo / 5.;
+    println!("Checking flags.");
+    if flags.pitch_offset != 0. {
+        println!("Applying pitch offset.");
+    }
+    let pitch = pitchbend::parser::pitch_string_to_midi(
+        args.pitchbend,
+        args.pitch as f64,
+        flags.pitch_offset,
+    )?;
+    let pps = 8. * args.tempo / 5.; // pitchbend points per second
     let pitch_interp = interp::Akima::new(pitch);
     let t_pitch: Vec<f64> = t_sec.iter().map(|x| x * pps).collect();
     let pitch_render = pitch_interp.sample_with_vec(&t_pitch);
