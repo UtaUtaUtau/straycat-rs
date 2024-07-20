@@ -6,7 +6,7 @@ use crate::interpolator::interp::{self, Interpolator};
 use crate::parser::ResamplerArgs;
 use crate::util::{self, smoothstep};
 use crate::world::features::{generate_features, read_features, to_feature_path};
-use crate::world::synthesis::synthesize;
+use crate::world::synthesis::{synthesize_aperiodic, synthesize_harmonic};
 use crate::{consts, pitchbend};
 use anyhow::Result;
 
@@ -81,7 +81,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     println!("Calculating timing.");
     let fps = 1000. / consts::FRAME_PERIOD; // WORLD frames per second
     let t_features: Vec<f64> = util::arange(feature_length as i32)
-        .iter()
+        .into_iter()
         .map(|x| x / fps)
         .collect();
     let feature_length_sec = feature_length as f64 / fps;
@@ -153,10 +153,17 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let t_pitch: Vec<f64> = t_sec.iter().map(|x| x * pps).collect();
     let pitch_render = pitch_interp.sample_with_vec(&t_pitch);
 
-    let mut f0_render = Vec::with_capacity(render_length);
-    for i in 0..render_length {
-        f0_render.push(util::midi_to_hz(pitch_render[i]) + f0_off_render[i] * modulation);
-    }
+    let mut f0_render: Vec<f64> = pitch_render
+        .into_iter()
+        .zip(f0_off_render.into_iter().zip(vuv_render.iter()))
+        .map(|(pitch, (f0_off, vuv))| {
+            if *vuv {
+                util::midi_to_hz(pitch) + f0_off * modulation
+            } else {
+                0.
+            }
+        })
+        .collect();
 
     if flags.fry_enable != 0. {
         // fry flag
@@ -165,51 +172,59 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         let fry_transition = 0.5 * flags.fry_transition.copysign(flags.fry_enable) / 1000.;
         let fry_offset = flags.fry_offset / 1000.;
         let fry_volume = flags.fry_volume / 100.;
-
-        for i in 0..render_length {
-            let t = t_sec[i] - consonant - fry_offset;
-            let amt = smoothstep(
-                -fry_length - fry_transition,
-                -fry_length + fry_transition,
-                t,
-            ) * smoothstep(fry_transition, -fry_transition, t);
-            if vuv_render[i] {
-                f0_render[i] = util::lerp(f0_render[i], flags.fry_pitch, amt);
-            }
-            sp_render[i]
-                .iter_mut()
-                .for_each(|x| *x *= util::lerp(1., fry_volume * fry_volume, amt));
-        }
+        sp_render
+            .iter_mut()
+            .zip(f0_render.iter_mut())
+            .zip(t_sec.iter().zip(vuv_render.iter()))
+            .for_each(|((sp_frame, f0), (t, vuv))| {
+                let t = t - consonant - fry_offset;
+                let amt = smoothstep(
+                    -fry_length - fry_transition,
+                    -fry_length + fry_transition,
+                    t,
+                ) * smoothstep(fry_transition, -fry_transition, t);
+                if *vuv {
+                    *f0 = util::lerp(*f0, flags.fry_pitch, amt);
+                }
+                sp_frame
+                    .iter_mut()
+                    .for_each(|x| *x *= util::lerp(1., fry_volume * fry_volume, amt));
+            });
     }
 
-    if flags.devoice_enable != 0. {
-        // devoice/voicing fix flag
-        println!("Devoicing.");
+    let syn_harmonic: Vec<f64> = synthesize_harmonic(&f0_render, &sp_render, &ap_render);
+    let syn_aperiodic: Vec<f64> = synthesize_aperiodic(&f0_render, &sp_render, &ap_render);
+    let t_syn: Vec<f64> = util::arange(syn_harmonic.len() as i32)
+        .iter()
+        .map(|x| x / consts::SAMPLE_RATE as f64)
+        .collect();
+
+    let syn: Vec<f64> = if flags.devoice_enable != 0. {
         let devoice_length = flags.devoice_enable / 1000.;
         let devoice_transition =
             0.5 * flags.devoice_transition.copysign(flags.devoice_enable) / 1000.;
         let devoice_offset = flags.devoice_offset / 1000.;
-
-        for i in 0..render_length {
-            let t = t_sec[i] - consonant - devoice_offset;
-            let amt = smoothstep(
-                -devoice_length - devoice_transition,
-                -devoice_length + devoice_transition,
-                t,
-            ) * smoothstep(devoice_transition, -devoice_transition, t);
-            let sp_frame = &mut sp_render[i];
-            let ap_frame = &mut ap_render[i];
-            for j in 0..feature_dim {
-                sp_frame[j] *= util::lerp(1., ap_frame[j] * ap_frame[j], amt);
-                ap_frame[j] *= util::lerp(1., 1. / ap_frame[j], amt);
-            }
-        }
-    }
-
-    let syn: Vec<f64> = synthesize(&f0_render, &mut sp_render, &mut ap_render)
-        .iter()
-        .map(|x| x * volume)
-        .collect();
+        syn_harmonic
+            .iter()
+            .zip(syn_aperiodic.iter())
+            .zip(t_syn.iter())
+            .map(|((hm, wh), t)| {
+                let t = t - consonant - devoice_offset;
+                let amt = smoothstep(
+                    -devoice_length - devoice_transition,
+                    -devoice_length + devoice_transition,
+                    t,
+                ) * smoothstep(devoice_transition, -devoice_transition, t);
+                (hm * (1. - amt) + wh) * volume
+            })
+            .collect()
+    } else {
+        syn_harmonic
+            .iter()
+            .zip(syn_aperiodic.iter())
+            .map(|(hm, wh)| (hm + wh) * volume)
+            .collect()
+    };
     write_audio(out_file, &syn)?;
     Ok(())
 }
