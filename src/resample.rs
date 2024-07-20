@@ -53,7 +53,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     println!("Decoding WORLD features.");
 
     let feature_length = features.f0.len();
-    let feature_dim = consts::FFT_SIZE / 2 + 1;
+    let feature_dim = (consts::FFT_SIZE / 2 + 1) as usize;
     let sp = rsworld::decode_spectral_envelope(
         &features.mgc,
         feature_length as i32,
@@ -159,9 +159,10 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     }
 
     if flags.fry_enable != 0. {
+        // fry flag
         println!("Applying fry.");
         let fry_length = flags.fry_enable / 1000.;
-        let fry_transition = 0.5 * flags.fry_transition / 1000.;
+        let fry_transition = 0.5 * flags.fry_transition.copysign(flags.fry_enable) / 1000.;
         let fry_offset = flags.fry_offset / 1000.;
         let fry_volume = flags.fry_volume / 100.;
 
@@ -178,6 +179,30 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
             sp_render[i]
                 .iter_mut()
                 .for_each(|x| *x *= util::lerp(1., fry_volume * fry_volume, amt));
+        }
+    }
+
+    if flags.devoice_enable != 0. {
+        // devoice/voicing fix flag
+        println!("Devoicing.");
+        let devoice_length = flags.devoice_enable / 1000.;
+        let devoice_transition =
+            0.5 * flags.devoice_transition.copysign(flags.devoice_enable) / 1000.;
+        let devoice_offset = flags.devoice_offset / 1000.;
+
+        for i in 0..render_length {
+            let t = t_sec[i] - consonant - devoice_offset;
+            let amt = smoothstep(
+                -devoice_length - devoice_transition,
+                -devoice_length + devoice_transition,
+                t,
+            ) * smoothstep(devoice_transition, -devoice_transition, t);
+            let sp_frame = &mut sp_render[i];
+            let ap_frame = &mut ap_render[i];
+            for j in 0..feature_dim {
+                sp_frame[j] *= util::lerp(1., ap_frame[j] * ap_frame[j], amt);
+                ap_frame[j] *= util::lerp(1., 1. / ap_frame[j], amt);
+            }
         }
     }
 

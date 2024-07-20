@@ -32,14 +32,15 @@ pub fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
         .collect()
 }
 
-// smoothstep
-pub fn smoothstep(s: f64, e: f64, x: f64) -> f64 {
-    let x = ((x - s) / (e - s)).clamp(0., 1.);
+pub fn smoothstep(edge0: f64, edge1: f64, x: f64) -> f64 {
+    // smoothstep
+    let x = ((x - edge0) / (edge1 - edge0)).clamp(0., 1.);
 
     x * x * (3. - 2. * x)
 }
 
 pub fn lerp(a: f64, b: f64, t: f64) -> f64 {
+    // Linear interpolation
     a * (1. - t) + b * t
 }
 
