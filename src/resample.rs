@@ -65,6 +65,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         feature_length as i32,
         consts::SAMPLE_RATE as i32,
     );
+    let vuv: Vec<bool> = features.f0.iter().map(|f0| *f0 != 0.).collect();
     let f0_off: Vec<f64> = features
         .f0
         .iter()
@@ -124,6 +125,10 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let f0_off_interp = interp::Akima::new(f0_off);
 
     let f0_off_render = f0_off_interp.sample_with_vec(&t_render);
+    let vuv_render: Vec<bool> = t_render
+        .iter()
+        .map(|i| vuv[(*i as usize).clamp(0, feature_length - 1)])
+        .collect();
     let mut sp_render =
         interp::interpolate_first_axis(sp, &t_render, interp::InterpolatorType::Akima);
     let mut ap_render =
@@ -167,16 +172,12 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
                 -fry_length + fry_transition,
                 t,
             ) * smoothstep(fry_transition, -fry_transition, t);
-            f0_render[i] = util::lerp(f0_render[i], flags.fry_pitch, amt);
-            let sp_frame = &mut sp_render[i];
-            let ap_frame = &ap_render[i];
-            for j in 0..feature_dim as usize {
-                sp_frame[j] *= util::lerp(1., 1. - ap_frame[j] * ap_frame[j], amt);
+            if vuv_render[i] {
+                f0_render[i] = util::lerp(f0_render[i], flags.fry_pitch, amt);
             }
             sp_render[i]
                 .iter_mut()
-                .chain(ap_render[i].iter_mut())
-                .for_each(|x| *x *= util::lerp(1., fry_volume, amt));
+                .for_each(|x| *x *= util::lerp(1., fry_volume * fry_volume, amt));
         }
     }
 
