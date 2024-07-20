@@ -7,16 +7,16 @@ pub fn arange(end: i32) -> Vec<f64> {
 }
 
 pub fn linspace(start: f64, end: f64, num: usize, endpoint: bool) -> Vec<f64> {
-    let mut result = Vec::with_capacity(num);
-    for i in 0..num {
-        let ratio = if endpoint {
-            i as f64 / (num as f64 - 1.)
-        } else {
-            i as f64 / num as f64
-        };
-        result.push(start + (end - start) * ratio);
-    }
-    result
+    (0..num)
+        .map(|i| {
+            let ratio = if endpoint {
+                i as f64 / (num - 1) as f64
+            } else {
+                i as f64 / num as f64
+            };
+            start + (end - start) * ratio
+        })
+        .collect()
 }
 
 pub fn transpose<T>(v: Vec<Vec<T>>) -> Vec<Vec<T>> {
