@@ -14,7 +14,7 @@ pub fn linspace(start: f64, end: f64, num: usize, endpoint: bool) -> Vec<f64> {
             } else {
                 i as f64 / num as f64
             };
-            start + (end - start) * ratio
+            lerp(start, end, ratio)
         })
         .collect()
 }
