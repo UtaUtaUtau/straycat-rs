@@ -170,7 +170,7 @@ impl FromStr for Flags {
                             FlagToken::Tremolo => flags.tremolo = *value,
                             FlagToken::PitchOffset => flags.pitch_offset = *value,
                             FlagToken::AperiodicMix => flags.aperiodic_mix = value.clamp(0., 100.),
-                            FlagToken::Growl => flags.growl = value.max(0.),
+                            FlagToken::Growl => flags.growl = value.clamp(0., 100.),
                             _ => (),
                         }
                         i += 1;
