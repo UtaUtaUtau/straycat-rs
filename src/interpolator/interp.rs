@@ -4,7 +4,7 @@ pub trait Interpolator {
     fn sample(&self, x: f64) -> f64;
 
     fn sample_with_vec(&self, x: &Vec<f64>) -> Vec<f64> {
-        x.into_iter().map(|p| self.sample(*p)).collect()
+        x.iter().map(|p| self.sample(*p)).collect()
     }
 }
 
@@ -16,14 +16,14 @@ struct CubicCoefficients {
     pub d: f64,
 }
 
-pub struct Akima {
+pub struct Akima<'a> {
     // Akima interpolator
-    curve: Vec<f64>,
+    curve: &'a Vec<f64>,
     coeffs: Vec<CubicCoefficients>,
 }
 
-impl Akima {
-    pub fn new(curve: Vec<f64>) -> Self {
+impl<'a> Akima<'a> {
+    pub fn new(curve: &'a Vec<f64>) -> Akima<'a> {
         // Calculations based on scipy implementation https://github.com/scipy/scipy/blob/v1.14.0/scipy/interpolate/_cubic.py#L395-L581
         // and Wikipedia article https://en.wikipedia.org/wiki/Akima_spline
         let n = curve.len() - 1;
@@ -66,7 +66,7 @@ impl Akima {
     }
 }
 
-impl Interpolator for Akima {
+impl Interpolator for Akima<'_> {
     fn sample(&self, x: f64) -> f64 {
         let x = x.clamp(0., self.curve.len() as f64 - 1.);
         if x == self.curve.len() as f64 - 1. {
@@ -83,20 +83,20 @@ impl Interpolator for Akima {
     }
 }
 
-pub struct CatmullRom {
+pub struct CatmullRom<'a> {
     // Catmull-Rom spline
-    curve: Vec<f64>,
+    curve: &'a Vec<f64>,
     coeffs: Vec<CubicCoefficients>,
 }
 
-impl CatmullRom {
-    pub fn new(curve: Vec<f64>) -> Self {
+impl<'a> CatmullRom<'a> {
+    pub fn new(curve: &'a Vec<f64>) -> CatmullRom<'a> {
         // Calculations based on https://www.paulinternet.nl/?page=bicubic
         let n = curve.len() - 1;
         let mut coeffs = Vec::with_capacity(n);
         let mut p = Vec::with_capacity(n + 2);
 
-        for x in &curve {
+        for x in curve {
             p.push(*x);
         }
 
@@ -117,7 +117,7 @@ impl CatmullRom {
     }
 }
 
-impl Interpolator for CatmullRom {
+impl Interpolator for CatmullRom<'_> {
     fn sample(&self, x: f64) -> f64 {
         let x = x.clamp(0., self.curve.len() as f64 - 1.);
         if x == self.curve.len() as f64 - 1. {
@@ -134,14 +134,14 @@ impl Interpolator for CatmullRom {
     }
 }
 
-pub struct Lanczos {
+pub struct Lanczos<'a> {
     // Lanczos interpolation
-    curve: Vec<f64>,
+    curve: &'a Vec<f64>,
     q: f64, // Window size...?
 }
 
-impl Lanczos {
-    pub fn new(curve: Vec<f64>, q: Option<f64>) -> Self {
+impl<'a> Lanczos<'a> {
+    pub fn new(curve: &'a Vec<f64>, q: Option<f64>) -> Lanczos<'a> {
         Self {
             curve,
             q: q.unwrap_or(3.),
@@ -161,7 +161,7 @@ impl Lanczos {
     }
 }
 
-impl Interpolator for Lanczos {
+impl Interpolator for Lanczos<'_> {
     fn sample(&self, x: f64) -> f64 {
         let x = x.clamp(0., self.curve.len() as f64 - 1.);
         let index = x.floor() as isize;
@@ -195,14 +195,14 @@ pub fn interpolate_first_axis(
     interpolator_type: InterpolatorType,
 ) -> Vec<Vec<f64>> {
     util::transpose(interpolate_second_axis(
-        util::transpose(vec_2d),
+        &util::transpose(vec_2d),
         points,
         interpolator_type,
     ))
 }
 
 pub fn interpolate_second_axis(
-    vec_2d: Vec<Vec<f64>>,
+    vec_2d: &Vec<Vec<f64>>,
     points: &Vec<f64>,
     interpolator_type: InterpolatorType,
 ) -> Vec<Vec<f64>> {
@@ -229,8 +229,9 @@ mod tests {
 
     #[test]
     fn test_akima() {
+        let x = X.to_vec();
         let n = X.len() as i32;
-        let interp = Akima::new(X.to_vec());
+        let interp = Akima::new(&x);
 
         let mut csv = File::create("test/akima.csv").expect("Cannot create file");
         csv.write_all("x,y\n".as_bytes())
@@ -247,8 +248,9 @@ mod tests {
 
     #[test]
     fn test_catmull_rom() {
+        let x = X.to_vec();
         let n = X.len() as i32;
-        let interp = CatmullRom::new(X.to_vec());
+        let interp = CatmullRom::new(&x);
 
         let mut csv = File::create("test/catmull_rom.csv").expect("Cannot create file");
         csv.write_all("x,y\n".as_bytes())
@@ -265,8 +267,9 @@ mod tests {
 
     #[test]
     fn test_lanczos() {
+        let x = X.to_vec();
         let n = X.len() as i32;
-        let interp = Lanczos::new(X.to_vec(), None);
+        let interp = Lanczos::new(&x, None);
 
         let mut csv = File::create("test/lanczos.csv").expect("Cannot create file");
         csv.write_all("x,y\n".as_bytes())
@@ -301,7 +304,7 @@ mod tests {
                 axis_vec.push(test_2d[i][j]);
             }
 
-            let axis_interp = CatmullRom::new(axis_vec);
+            let axis_interp = CatmullRom::new(&axis_vec);
             let mut axis_interpolated = Vec::with_capacity(32);
             for i in 0..32 {
                 axis_interpolated.push(axis_interp.sample(i as f64 / 2.));
