@@ -7,11 +7,11 @@ use crate::interpolator::interp::{self, Akima, Interpolator};
 use crate::parser::ResamplerArgs;
 use crate::util::{self, smoothstep};
 use crate::world::features::{generate_features, read_features, to_feature_path};
-use crate::world::synthesis::{synthesize, synthesize_aperiodic, synthesize_harmonic};
+use crate::world::synthesis::{synthesize_aperiodic, synthesize_harmonic};
 use crate::{consts, filter, pitchbend};
 use anyhow::Result;
 use biquad::{Biquad, DirectForm2Transposed, Q_BUTTERWORTH_F64};
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 
 fn fry(
