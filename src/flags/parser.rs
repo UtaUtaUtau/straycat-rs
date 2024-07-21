@@ -21,6 +21,7 @@ pub struct Flags {
     pub tremolo: f64,
     pub pitch_offset: f64,
     pub aperiodic_mix: f64,
+    pub growl: f64,
 }
 
 enum FlagToken {
@@ -40,6 +41,7 @@ enum FlagToken {
     Tremolo,
     PitchOffset,
     AperiodicMix,
+    Growl,
     Number(f64),
 }
 
@@ -62,6 +64,7 @@ impl Flags {
             tremolo: 0.,
             pitch_offset: 0.,
             aperiodic_mix: 0.,
+            growl: 0.,
         }
     }
 }
@@ -85,24 +88,6 @@ impl FromStr for Flags {
             } else {
                 None
             };
-            // check two character flags
-            if let Some(flag) = two_chars {
-                let mut matched = true;
-                match flag {
-                    "fe" => flag_tokens.push(FlagToken::FryEnable),
-                    "fo" => flag_tokens.push(FlagToken::FryOffset),
-                    "fl" => flag_tokens.push(FlagToken::FryTransition),
-                    "fv" => flag_tokens.push(FlagToken::FryVolume),
-                    "fp" => flag_tokens.push(FlagToken::FryPitch),
-                    "ve" => flag_tokens.push(FlagToken::DevoiceEnable),
-                    "vo" => flag_tokens.push(FlagToken::DevoiceOffset),
-                    "vl" => flag_tokens.push(FlagToken::DevoiceTransition),
-                    _ => matched = false,
-                }
-                if matched {
-                    i += 1; // increment index if matched
-                }
-            }
 
             // check single character flags
             match curr {
@@ -115,6 +100,26 @@ impl FromStr for Flags {
                 "S" => flag_tokens.push(FlagToken::AperiodicMix),
                 "G" => flag_tokens.push(FlagToken::GenerateFeatures),
                 _ => (),
+            }
+
+            // check two character flags
+            if let Some(flag) = two_chars {
+                let mut matched = true;
+                match flag {
+                    "fe" => flag_tokens.push(FlagToken::FryEnable),
+                    "fo" => flag_tokens.push(FlagToken::FryOffset),
+                    "fl" => flag_tokens.push(FlagToken::FryTransition),
+                    "fv" => flag_tokens.push(FlagToken::FryVolume),
+                    "fp" => flag_tokens.push(FlagToken::FryPitch),
+                    "ve" => flag_tokens.push(FlagToken::DevoiceEnable),
+                    "vo" => flag_tokens.push(FlagToken::DevoiceOffset),
+                    "vl" => flag_tokens.push(FlagToken::DevoiceTransition),
+                    "gw" => flag_tokens.push(FlagToken::Growl),
+                    _ => matched = false,
+                }
+                if matched {
+                    i += 1; // increment index if matched
+                }
             }
 
             // parse numbers
@@ -165,6 +170,7 @@ impl FromStr for Flags {
                             FlagToken::Tremolo => flags.tremolo = *value,
                             FlagToken::PitchOffset => flags.pitch_offset = *value,
                             FlagToken::AperiodicMix => flags.aperiodic_mix = value.clamp(0., 100.),
+                            FlagToken::Growl => flags.growl = value.max(0.),
                             _ => (),
                         }
                         i += 1;

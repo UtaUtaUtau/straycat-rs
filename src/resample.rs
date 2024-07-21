@@ -3,13 +3,16 @@ use std::path::Path;
 use crate::audio::post_process::{peak_compression, peak_normalization};
 use crate::audio::read_write::{read_audio, write_audio};
 use crate::flags::parser::Flags;
-use crate::interpolator::interp::{self, Interpolator};
+use crate::interpolator::interp::{self, Akima, Interpolator};
 use crate::parser::ResamplerArgs;
 use crate::util::{self, smoothstep};
 use crate::world::features::{generate_features, read_features, to_feature_path};
-use crate::world::synthesis::{synthesize_aperiodic, synthesize_harmonic};
-use crate::{consts, pitchbend};
+use crate::world::synthesis::{synthesize, synthesize_aperiodic, synthesize_harmonic};
+use crate::{consts, filter, pitchbend};
 use anyhow::Result;
+use biquad::{Biquad, DirectForm2Transposed, Q_BUTTERWORTH_F64};
+use rand::{thread_rng, Rng};
+use rand_distr::{Distribution, Normal};
 
 fn fry(
     f0: &mut Vec<f64>,
@@ -247,13 +250,77 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     }
 
     // render harmonic and aperiodic signals
-    let syn_harmonic: Vec<f64> = synthesize_harmonic(&f0_render, &sp_render, &ap_render);
-    let syn_aperiodic: Vec<f64> =
-        synthesize_aperiodic(&f0_render, &mut sp_render, &ap_render, true);
+    let mut syn_harmonic: Vec<f64> = synthesize_harmonic(&f0_render, &sp_render, &ap_render);
     let t_syn: Vec<f64> = util::arange(syn_harmonic.len() as i32)
         .iter()
         .map(|x| x / consts::SAMPLE_RATE as f64)
         .collect();
+
+    if flags.growl != 0. {
+        // growl flag. i know.
+        println!("Adding growl.");
+        let growl_mix = flags.growl / 100.;
+
+        // random normal distrib with standard dev based on growl strength
+        let mut rng = thread_rng();
+        let normal: Normal<f64> = Normal::new(0., growl_mix * growl_mix)?;
+        let f0_layer = f0_render
+            .iter()
+            .map(|x| x * 0.5 * normal.sample(&mut rng).exp2()) // octave + randomness
+            .collect();
+        let mut syn_layer = synthesize_harmonic(&f0_layer, &mut sp_render, &mut ap_render); // growl layer
+
+        // filter out fundamental of growl layer. expensive i know.
+        let f0_layer_interp = Akima::new(&f0_render);
+        let coeffs = filter::make_coefficients(
+            biquad::Type::HighPass,
+            consts::SAMPLE_RATE as f64,
+            1.,
+            Q_BUTTERWORTH_F64,
+        )?;
+        let mut f0_filter = DirectForm2Transposed::<f64>::new(coeffs);
+
+        for _ in 0..2 {
+            syn_layer.iter_mut().zip(t_syn.iter()).for_each(|(x, t)| {
+                let f0_point = f0_layer_interp.sample(t * fps).max(1.);
+                let coeffs = filter::make_coefficients(
+                    biquad::Type::HighPass,
+                    consts::SAMPLE_RATE as f64,
+                    f0_point,
+                    Q_BUTTERWORTH_F64,
+                )
+                .unwrap();
+                f0_filter.update_coefficients(coeffs);
+                *x = f0_filter.run(*x);
+            });
+            f0_filter.reset_state();
+            syn_layer
+                .iter_mut()
+                .rev()
+                .zip(t_syn.iter().rev())
+                .for_each(|(x, t)| {
+                    let f0_point = f0_layer_interp.sample(t * fps).max(1.);
+                    let coeffs = filter::make_coefficients(
+                        biquad::Type::HighPass,
+                        consts::SAMPLE_RATE as f64,
+                        f0_point,
+                        Q_BUTTERWORTH_F64,
+                    )
+                    .unwrap();
+                    f0_filter.update_coefficients(coeffs);
+                    *x = f0_filter.run(*x);
+                });
+            f0_filter.reset_state();
+        }
+
+        syn_harmonic
+            .iter_mut()
+            .zip(syn_layer.iter())
+            .for_each(|(hm, gw)| *hm = util::lerp(*hm, *gw, growl_mix)); // mix growl layer
+    }
+
+    let syn_aperiodic: Vec<f64> =
+        synthesize_aperiodic(&f0_render, &mut sp_render, &ap_render, true);
 
     let harmonic_mix = 1. - 2. * (flags.breathiness / 100. - 0.5);
     if flags.breathiness != 50. {
