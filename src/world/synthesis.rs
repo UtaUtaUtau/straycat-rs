@@ -3,17 +3,11 @@ use rsworld::synthesis;
 
 pub fn synthesize(f0: &Vec<f64>, sp: &mut Vec<Vec<f64>>, ap: &mut Vec<Vec<f64>>) -> Vec<f64> {
     // Synthesize from WORLD features, ensuring features are within WORLD's restrictions
-    for sp_frame in &mut *sp {
-        for s in sp_frame {
-            *s = s.max(1e-16);
-        }
-    }
+    sp.iter_mut()
+        .for_each(|sp_frame| sp_frame.iter_mut().for_each(|s| *s = s.max(1e-16)));
 
-    for ap_frame in &mut *ap {
-        for a in ap_frame {
-            *a = a.clamp(0., 1.);
-        }
-    }
+    ap.iter_mut()
+        .for_each(|ap_frame| ap_frame.iter_mut().for_each(|a| *a = a.clamp(0., 1.)));
 
     synthesis(
         &f0,
