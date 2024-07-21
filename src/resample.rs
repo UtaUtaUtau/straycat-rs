@@ -165,6 +165,39 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         })
         .collect();
 
+    if flags.gender != 0. {
+        // gender flag
+        println!("Shifting formants.");
+        let shift = (flags.gender / 120.).exp2();
+
+        let freq_t: Vec<f64> = util::arange(feature_dim as i32)
+            .iter()
+            .map(|x| x * shift)
+            .collect();
+        let mask: Vec<f64> = freq_t
+            .iter()
+            .map(|x| smoothstep((feature_dim - 1) as f64, (feature_dim - 2) as f64, *x))
+            .collect();
+
+        sp_render.iter_mut().for_each(|sp_frame| {
+            let freq_interp = interp::Akima::new(sp_frame);
+            *sp_frame = freq_interp.sample_with_vec(&freq_t);
+            sp_frame
+                .iter_mut()
+                .zip(mask.iter())
+                .for_each(|(s, m)| *s *= *m);
+        });
+
+        ap_render.iter_mut().for_each(|ap_frame| {
+            let freq_interp = interp::Akima::new(ap_frame);
+            *ap_frame = freq_interp.sample_with_vec(&freq_t);
+            ap_frame
+                .iter_mut()
+                .zip(mask.iter())
+                .for_each(|(a, m)| *a *= *m);
+        });
+    }
+
     if flags.fry_enable != 0. {
         // fry flag
         println!("Applying fry.");
