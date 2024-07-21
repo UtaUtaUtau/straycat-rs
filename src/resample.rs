@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::audio::post_process::{peak_compression, peak_normalization};
 use crate::audio::read_write::{read_audio, write_audio};
 use crate::flags::parser::Flags;
 use crate::interpolator::interp::{self, Interpolator};
@@ -237,7 +238,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         println!("Adjusting breathiness.");
     }
 
-    let syn: Vec<f64> = if flags.devoice_enable != 0. {
+    let mut syn: Vec<f64> = if flags.devoice_enable != 0. {
         let devoice_length = flags.devoice_enable / 1000.;
         let devoice_transition =
             0.5 * flags.devoice_transition.copysign(flags.devoice_enable) / 1000.;
@@ -263,6 +264,17 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
             .map(|(hm, wh)| (hm * harmonic_mix + wh) * volume)
             .collect()
     };
+
+    if flags.peak_compression != 0. {
+        println!("Compressing render.");
+        peak_compression(&mut syn, flags.peak_compression / 100.)?;
+    }
+
+    if flags.peak_normalization >= 0. {
+        println!("Normalizing render.");
+        peak_normalization(&mut syn, flags.peak_normalization);
+    }
+
     write_audio(out_file, &syn)?;
     Ok(())
 }
