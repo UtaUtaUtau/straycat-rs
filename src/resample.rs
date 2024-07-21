@@ -11,6 +11,68 @@ use crate::world::synthesis::{synthesize_aperiodic, synthesize_harmonic};
 use crate::{consts, pitchbend};
 use anyhow::Result;
 
+fn fry(
+    f0: &mut Vec<f64>,
+    sp: &mut Vec<Vec<f64>>,
+    vuv: &Vec<bool>,
+    t: &Vec<f64>,
+    consonant: f64,
+    flags: &Flags,
+) {
+    // fake fry with a low pitchbend
+    let fry_length = flags.fry_enable / 1000.;
+    let fry_transition = 0.5 * flags.fry_transition.copysign(flags.fry_enable) / 1000.;
+    let fry_offset = flags.fry_offset / 1000.;
+    let fry_volume = flags.fry_volume / 100.;
+    sp.iter_mut()
+        .zip(f0.iter_mut())
+        .zip(t.iter().zip(vuv.iter()))
+        .for_each(|((sp_frame, f0), (t, vuv))| {
+            let t = t - consonant - fry_offset;
+            let amt = smoothstep(
+                -fry_length - fry_transition,
+                -fry_length + fry_transition,
+                t,
+            ) * smoothstep(fry_transition, -fry_transition, t);
+            if *vuv {
+                *f0 = util::lerp(*f0, flags.fry_pitch, amt);
+            }
+            sp_frame
+                .iter_mut()
+                .for_each(|x| *x *= util::lerp(1., fry_volume * fry_volume, amt));
+        });
+}
+
+fn formant_shift(sp: &mut Vec<Vec<f64>>, ap: &mut Vec<Vec<f64>>, feature_dim: i32, shift: f64) {
+    // shift formants by stretching in the frequency domain
+    let freq_t: Vec<f64> = util::arange(feature_dim)
+        .iter()
+        .map(|x| x * shift)
+        .collect();
+    let mask: Vec<f64> = freq_t
+        .iter()
+        .map(|x| smoothstep((feature_dim - 1) as f64, (feature_dim - 2) as f64, *x))
+        .collect();
+
+    sp.iter_mut().for_each(|sp_frame| {
+        let freq_interp = interp::Akima::new(sp_frame);
+        *sp_frame = freq_interp.sample_with_vec(&freq_t);
+        sp_frame
+            .iter_mut()
+            .zip(mask.iter())
+            .for_each(|(s, m)| *s *= *m);
+    });
+
+    ap.iter_mut().for_each(|ap_frame| {
+        let freq_interp = interp::Akima::new(ap_frame);
+        *ap_frame = freq_interp.sample_with_vec(&freq_t);
+        ap_frame
+            .iter_mut()
+            .zip(mask.iter())
+            .for_each(|(a, m)| *a *= *m);
+    });
+}
+
 pub fn run(args: ResamplerArgs) -> Result<()> {
     let null_out = &args.out_file == "nul"; // null file from Initialize freq. map args
     let flags: Flags = args.flags.replace("/", "").parse()?; // parse flags
@@ -152,14 +214,14 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let pps = 8. * args.tempo / 5.; // pitchbend points per second
     let pitch_interp = interp::Akima::new(&pitch);
     let t_pitch: Vec<f64> = t_sec.iter().map(|x| x * pps).collect();
-    let pitch_render = pitch_interp.sample_with_vec(&t_pitch);
+    let mut pitch_render = pitch_interp.sample_with_vec(&t_pitch);
 
     let mut f0_render: Vec<f64> = pitch_render
-        .into_iter()
+        .iter()
         .zip(f0_off_render.into_iter().zip(vuv_render.iter()))
         .map(|(pitch, (f0_off, vuv))| {
             if *vuv {
-                util::midi_to_hz(pitch) + f0_off * modulation
+                util::midi_to_hz(*pitch) + f0_off * modulation
             } else {
                 0.
             }
@@ -167,67 +229,27 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         .collect();
 
     if flags.gender != 0. {
-        // gender flag
         println!("Shifting formants.");
         let shift = (flags.gender / 120.).exp2();
-
-        let freq_t: Vec<f64> = util::arange(feature_dim as i32)
-            .iter()
-            .map(|x| x * shift)
-            .collect();
-        let mask: Vec<f64> = freq_t
-            .iter()
-            .map(|x| smoothstep((feature_dim - 1) as f64, (feature_dim - 2) as f64, *x))
-            .collect();
-
-        sp_render.iter_mut().for_each(|sp_frame| {
-            let freq_interp = interp::Akima::new(sp_frame);
-            *sp_frame = freq_interp.sample_with_vec(&freq_t);
-            sp_frame
-                .iter_mut()
-                .zip(mask.iter())
-                .for_each(|(s, m)| *s *= *m);
-        });
-
-        ap_render.iter_mut().for_each(|ap_frame| {
-            let freq_interp = interp::Akima::new(ap_frame);
-            *ap_frame = freq_interp.sample_with_vec(&freq_t);
-            ap_frame
-                .iter_mut()
-                .zip(mask.iter())
-                .for_each(|(a, m)| *a *= *m);
-        });
+        formant_shift(&mut sp_render, &mut ap_render, feature_dim as i32, shift);
     }
 
     if flags.fry_enable != 0. {
-        // fry flag
         println!("Applying fry.");
-        let fry_length = flags.fry_enable / 1000.;
-        let fry_transition = 0.5 * flags.fry_transition.copysign(flags.fry_enable) / 1000.;
-        let fry_offset = flags.fry_offset / 1000.;
-        let fry_volume = flags.fry_volume / 100.;
-        sp_render
-            .iter_mut()
-            .zip(f0_render.iter_mut())
-            .zip(t_sec.iter().zip(vuv_render.iter()))
-            .for_each(|((sp_frame, f0), (t, vuv))| {
-                let t = t - consonant - fry_offset;
-                let amt = smoothstep(
-                    -fry_length - fry_transition,
-                    -fry_length + fry_transition,
-                    t,
-                ) * smoothstep(fry_transition, -fry_transition, t);
-                if *vuv {
-                    *f0 = util::lerp(*f0, flags.fry_pitch, amt);
-                }
-                sp_frame
-                    .iter_mut()
-                    .for_each(|x| *x *= util::lerp(1., fry_volume * fry_volume, amt));
-            });
+        fry(
+            &mut f0_render,
+            &mut sp_render,
+            &vuv,
+            &t_sec,
+            consonant,
+            &flags,
+        );
     }
 
+    // render harmonic and aperiodic signals
     let syn_harmonic: Vec<f64> = synthesize_harmonic(&f0_render, &sp_render, &ap_render);
-    let syn_aperiodic: Vec<f64> = synthesize_aperiodic(&f0_render, &sp_render, &ap_render);
+    let syn_aperiodic: Vec<f64> =
+        synthesize_aperiodic(&f0_render, &mut sp_render, &ap_render, true);
     let t_syn: Vec<f64> = util::arange(syn_harmonic.len() as i32)
         .iter()
         .map(|x| x / consts::SAMPLE_RATE as f64)
@@ -238,6 +260,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         println!("Adjusting breathiness.");
     }
 
+    // combined logic for all flags related to controlling voicing
     let mut syn: Vec<f64> = if flags.devoice_enable != 0. {
         let devoice_length = flags.devoice_enable / 1000.;
         let devoice_transition =
