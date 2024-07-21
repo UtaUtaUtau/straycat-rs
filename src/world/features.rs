@@ -92,8 +92,13 @@ pub fn generate_features<P: AsRef<Path>>(
 
     // Ensure no NaNs are present in AP. Happens when a signal doesn't have higher frequencies.
     // It should be safe to assume that it does not have aperiodicity in those frequencies.
-    ap.iter_mut()
-        .for_each(|ap_frame| ap_frame.iter_mut().for_each(|a| *a = 0.));
+    ap.iter_mut().for_each(|ap_frame| {
+        ap_frame.iter_mut().for_each(|a| {
+            if a.is_nan() {
+                *a = 0.
+            }
+        })
+    });
 
     let base_f0 = calculate_base_f0(&f0);
 
