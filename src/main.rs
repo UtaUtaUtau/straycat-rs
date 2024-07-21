@@ -1,6 +1,7 @@
 // Module import
 mod audio;
 mod consts;
+mod filter;
 mod flags;
 mod interpolator;
 mod parser;
