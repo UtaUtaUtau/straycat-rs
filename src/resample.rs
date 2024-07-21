@@ -288,6 +288,15 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
             .collect()
     };
 
+    if flags.aperiodic_mix != 0. {
+        println!("Mixing uncorrected aperiodic.");
+        let mix = flags.aperiodic_mix / 100.;
+        let syn_aperiodic = synthesize_aperiodic(&f0_render, &mut sp_render, &ap_render, false);
+        syn.iter_mut()
+            .zip(syn_aperiodic.iter())
+            .for_each(|(x, a)| *x = *x * (1. - mix) + a * mix);
+    }
+
     if flags.peak_compression != 0. {
         println!("Compressing render.");
         peak_compression(&mut syn, flags.peak_compression / 100.)?;

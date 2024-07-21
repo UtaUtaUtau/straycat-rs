@@ -45,7 +45,7 @@ pub fn peak_compression(signal: &mut Vec<f64>, peak: f64) -> Result<()> {
 
     // "blur" the compression envelope
     let blur_coeffs =
-        filter::make_coefficients(Type::LowPass, env_fs, env_fs / 10., Q_BUTTERWORTH_F64)?;
+        filter::make_coefficients(Type::LowPass, env_fs, env_fs / 32., Q_BUTTERWORTH_F64)?;
     let mut blur_biquad = DirectForm2Transposed::<f64>::new(blur_coeffs);
     filter::forward_backward_filter(&mut comp, &mut blur_biquad, 1);
 
