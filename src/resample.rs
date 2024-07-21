@@ -232,6 +232,11 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         .map(|x| x / consts::SAMPLE_RATE as f64)
         .collect();
 
+    let harmonic_mix = 1. - 2. * (flags.breathiness / 100. - 0.5);
+    if flags.breathiness != 50. {
+        println!("Adjusting breathiness.");
+    }
+
     let syn: Vec<f64> = if flags.devoice_enable != 0. {
         let devoice_length = flags.devoice_enable / 1000.;
         let devoice_transition =
@@ -248,14 +253,14 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
                     -devoice_length + devoice_transition,
                     t,
                 ) * smoothstep(devoice_transition, -devoice_transition, t);
-                (hm * (1. - amt) + wh) * volume
+                (hm * (1. - amt) * harmonic_mix + wh) * volume
             })
             .collect()
     } else {
         syn_harmonic
             .iter()
             .zip(syn_aperiodic.iter())
-            .map(|(hm, wh)| (hm + wh) * volume)
+            .map(|(hm, wh)| (hm * harmonic_mix + wh) * volume)
             .collect()
     };
     write_audio(out_file, &syn)?;
