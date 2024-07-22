@@ -43,15 +43,29 @@ jobs:
         run: cargo install cargo-get
       - name: Get version from Cargo.toml
         id: getversion
-        run: echo ::set-output name=version::$(cargo get package.version)
+        run: |
+          echo "Building Straycat version: $(cargo get package.version)"
+          echo ::set-output name=version::$(cargo get package.version)
         # run: echo "PACKAGE_VERSION=$(cargo get package.version)" >> $GITHUB_ENV
+
+      - name: Create tag
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/straycat-v${{ steps.getversion.outputs.version }}',
+              sha: context.sha
+            })
 
       - name: Update CHANGELOG
         id: changelog
         uses: requarks/changelog-action@v1
         with:
           token: ${{ github.token }}
-          tag: straycat-v${{ steps.getversion.outputs.version }}
+          fromTag: ${{ github.ref_name }}
+          toTag: straycat-v${{ steps.getversion.outputs.version }}
 
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
