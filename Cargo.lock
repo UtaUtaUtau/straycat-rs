@@ -408,7 +408,7 @@ dependencies = [
 
 [[package]]
 name = "straycat-rs"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "anyhow",
  "bincode",
