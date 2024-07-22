@@ -137,9 +137,9 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         .iter()
         .map(|f0| {
             if *f0 == 0. {
-                features.base_f0
+                0.
             } else {
-                f0 - features.base_f0
+                12. * (f0.log2() - features.base_f0.log2())
             }
         })
         .collect();
@@ -217,14 +217,14 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let pps = 8. * args.tempo / 5.; // pitchbend points per second
     let pitch_interp = interp::Akima::new(&pitch);
     let t_pitch: Vec<f64> = t_sec.iter().map(|x| x * pps).collect();
-    let mut pitch_render = pitch_interp.sample_with_vec(&t_pitch);
+    let pitch_render = pitch_interp.sample_with_vec(&t_pitch);
 
     let mut f0_render: Vec<f64> = pitch_render
         .iter()
         .zip(f0_off_render.into_iter().zip(vuv_render.iter()))
         .map(|(pitch, (f0_off, vuv))| {
             if *vuv {
-                util::midi_to_hz(*pitch) + f0_off * modulation
+                util::midi_to_hz(*pitch + f0_off * modulation)
             } else {
                 0.
             }
