@@ -3,14 +3,14 @@ use std::path::Path;
 use crate::audio::post_process::{peak_compression, peak_normalization};
 use crate::audio::read_write::{read_audio, write_audio};
 use crate::flags::parser::Flags;
-use crate::interpolator::interp::{self, Akima, Interpolator};
+use crate::interpolator::interp::{self, Interpolator};
 use crate::parser::ResamplerArgs;
 use crate::util::{self, smoothstep};
 use crate::world::features::{generate_features, read_features, to_feature_path};
 use crate::world::synthesis::{synthesize_aperiodic, synthesize_harmonic};
 use crate::{consts, filter, pitchbend};
 use anyhow::Result;
-use biquad::{Biquad, DirectForm2Transposed, Q_BUTTERWORTH_F64};
+use biquad::{Biquad, DirectForm1, Q_BUTTERWORTH_F64};
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 
@@ -271,18 +271,18 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         let mut syn_layer = synthesize_harmonic(&f0_layer, &mut sp_render, &mut ap_render); // growl layer
 
         // filter out fundamental of growl layer. expensive i know.
-        let f0_layer_interp = Akima::new(&f0_render);
+        let f0_interp = interp::Akima::new(&f0_render);
         let coeffs = filter::make_coefficients(
             biquad::Type::HighPass,
             consts::SAMPLE_RATE as f64,
-            1.,
+            120.,
             Q_BUTTERWORTH_F64,
         )?;
-        let mut f0_filter = DirectForm2Transposed::<f64>::new(coeffs);
+        let mut f0_filter = DirectForm1::<f64>::new(coeffs);
 
         for _ in 0..2 {
             syn_layer.iter_mut().zip(t_syn.iter()).for_each(|(x, t)| {
-                let f0_point = f0_layer_interp.sample(t * fps).max(1.);
+                let f0_point = f0_interp.sample(t * fps).max(120.);
                 let coeffs = filter::make_coefficients(
                     biquad::Type::HighPass,
                     consts::SAMPLE_RATE as f64,
@@ -299,7 +299,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
                 .rev()
                 .zip(t_syn.iter().rev())
                 .for_each(|(x, t)| {
-                    let f0_point = f0_layer_interp.sample(t * fps).max(1.);
+                    let f0_point = f0_interp.sample(t * fps).max(120.);
                     let coeffs = filter::make_coefficients(
                         biquad::Type::HighPass,
                         consts::SAMPLE_RATE as f64,
