@@ -48,7 +48,13 @@ jobs:
           echo ::set-output name=version::$(cargo get package.version)
         # run: echo "PACKAGE_VERSION=$(cargo get package.version)" >> $GITHUB_ENV
 
+      - uses: mukunku/tag-exists-action@v1.6.0
+        id: check-tag
+        with: 
+          tag: 'v1.0'
+
       - name: Create tag
+        if: steps.check-tag.outputs.exists == 'false' 
         uses: actions/github-script@v5
         with:
           script: |
