@@ -1,11 +1,7 @@
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
-
 use crate::audio::post_process::{peak_compression, peak_normalization};
 use crate::audio::read_write::{read_audio, write_audio};
 use crate::flags::parser::Flags;
-use crate::interpolator::interp::{self, Akima, Interpolator};
+use crate::interpolator::interp::{self, Interpolator};
 use crate::parser::ResamplerArgs;
 use crate::util::{self, smoothstep};
 use crate::world::features::{generate_features, read_features, to_feature_path};
@@ -15,6 +11,7 @@ use anyhow::Result;
 use biquad::{Biquad, DirectForm1, DirectForm2Transposed, Q_BUTTERWORTH_F64};
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
+use std::path::Path;
 
 pub fn run(args: ResamplerArgs) -> Result<()> {
     // Main resampler function
