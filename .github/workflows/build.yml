@@ -48,6 +48,9 @@ jobs:
           echo ::set-output name=version::$(cargo get package.version)
         # run: echo "PACKAGE_VERSION=$(cargo get package.version)" >> $GITHUB_ENV
 
+      # If you see this, I gave up. I have tried to get this to work for hour(s) and it just won't. I have no idea what I'm doing.
+      # Good luck to you, brave soul. You will need it.
+
       # - uses: mukunku/tag-exists-action@v1.6.0
       #   id: check-tag
       #   with: 
@@ -65,10 +68,6 @@ jobs:
       #         sha: context.sha
       #       })
 
-      - name: Run Changelog CI
-        id: changelog
-        uses: saadmk11/changelog-ci@v1.1.2
-
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
         with:
@@ -79,7 +78,7 @@ jobs:
           artifacts: .\target\release\straycat-rs.exe
           name: 'Straycat version ${{ steps.getversion.outputs.version }}'
           tag: 'straycat-v${{ steps.getversion.outputs.version }}'
-          body: ${{ steps.changelog.outputs.changelog }}
+          body: 'A Straycat release. Some things changed. Probably.'
           token: ${{ github.token }}
 
       - name: Commit CHANGELOG.md
