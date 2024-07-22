@@ -1,82 +1,23 @@
+use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 
 use crate::audio::post_process::{peak_compression, peak_normalization};
 use crate::audio::read_write::{read_audio, write_audio};
 use crate::flags::parser::Flags;
-use crate::interpolator::interp::{self, Interpolator};
+use crate::interpolator::interp::{self, Akima, Interpolator};
 use crate::parser::ResamplerArgs;
 use crate::util::{self, smoothstep};
 use crate::world::features::{generate_features, read_features, to_feature_path};
 use crate::world::synthesis::{synthesize_aperiodic, synthesize_harmonic};
 use crate::{consts, filter, pitchbend};
 use anyhow::Result;
-use biquad::{Biquad, DirectForm1, Q_BUTTERWORTH_F64};
+use biquad::{Biquad, DirectForm1, DirectForm2Transposed, Q_BUTTERWORTH_F64};
 use rand::thread_rng;
 use rand_distr::{Distribution, Normal};
 
-fn fry(
-    f0: &mut Vec<f64>,
-    sp: &mut Vec<Vec<f64>>,
-    vuv: &Vec<bool>,
-    t: &Vec<f64>,
-    consonant: f64,
-    flags: &Flags,
-) {
-    // fake fry with a low pitchbend
-    let fry_length = flags.fry_enable / 1000.;
-    let fry_transition = 0.5 * flags.fry_transition.copysign(flags.fry_enable) / 1000.;
-    let fry_offset = flags.fry_offset / 1000.;
-    let fry_volume = flags.fry_volume / 100.;
-    sp.iter_mut()
-        .zip(f0.iter_mut())
-        .zip(t.iter().zip(vuv.iter()))
-        .for_each(|((sp_frame, f0), (t, vuv))| {
-            let t = t - consonant - fry_offset;
-            let amt = smoothstep(
-                -fry_length - fry_transition,
-                -fry_length + fry_transition,
-                t,
-            ) * smoothstep(fry_transition, -fry_transition, t);
-            if *vuv {
-                *f0 = util::lerp(*f0, flags.fry_pitch, amt);
-            }
-            sp_frame
-                .iter_mut()
-                .for_each(|x| *x *= util::lerp(1., fry_volume * fry_volume, amt));
-        });
-}
-
-fn formant_shift(sp: &mut Vec<Vec<f64>>, ap: &mut Vec<Vec<f64>>, feature_dim: i32, shift: f64) {
-    // shift formants by stretching in the frequency domain
-    let freq_t: Vec<f64> = util::arange(feature_dim)
-        .iter()
-        .map(|x| x * shift)
-        .collect();
-    let mask: Vec<f64> = freq_t
-        .iter()
-        .map(|x| smoothstep((feature_dim - 1) as f64, (feature_dim - 2) as f64, *x))
-        .collect();
-
-    sp.iter_mut().for_each(|sp_frame| {
-        let freq_interp = interp::Akima::new(sp_frame);
-        *sp_frame = freq_interp.sample_with_vec(&freq_t);
-        sp_frame
-            .iter_mut()
-            .zip(mask.iter())
-            .for_each(|(s, m)| *s *= *m);
-    });
-
-    ap.iter_mut().for_each(|ap_frame| {
-        let freq_interp = interp::Akima::new(ap_frame);
-        *ap_frame = freq_interp.sample_with_vec(&freq_t);
-        ap_frame
-            .iter_mut()
-            .zip(mask.iter())
-            .for_each(|(a, m)| *a *= *m);
-    });
-}
-
 pub fn run(args: ResamplerArgs) -> Result<()> {
+    // Main resampler function
     let null_out = &args.out_file == "nul"; // null file from Initialize freq. map args
     let flags: Flags = args.flags.replace("/", "").parse()?; // parse flags
 
@@ -209,11 +150,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     if flags.pitch_offset != 0. {
         println!("Applying pitch offset.");
     }
-    let pitch = pitchbend::parser::pitch_string_to_midi(
-        args.pitchbend,
-        args.pitch as f64,
-        flags.pitch_offset / 100.,
-    )?;
+    let pitch = pitchbend::parser::pitch_string_to_midi(args.pitchbend)?;
     let pps = 8. * args.tempo / 5.; // pitchbend points per second
     let pitch_interp = interp::Akima::new(&pitch);
     let t_pitch: Vec<f64> = t_sec.iter().map(|x| x * pps).collect();
@@ -224,7 +161,9 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         .zip(f0_off_render.into_iter().zip(vuv_render.iter()))
         .map(|(pitch, (f0_off, vuv))| {
             if *vuv {
-                util::midi_to_hz(*pitch + f0_off * modulation)
+                util::midi_to_hz(
+                    *pitch + args.pitch as f64 + flags.pitch_offset / 100. + f0_off * modulation,
+                )
             } else {
                 0.
             }
@@ -364,6 +303,12 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
             .for_each(|(x, a)| *x = *x * (1. - mix) + a * mix);
     }
 
+    if flags.tremolo != 0. {
+        println!("Adding tremolo.");
+        let mut pitch_raw = pitch_interp.sample_with_vec(&t_pitch);
+        tremolo(&mut syn, &mut pitch_raw, &t_syn, fps, flags.tremolo / 100.)?;
+    }
+
     if flags.peak_compression != 0. {
         println!("Compressing render.");
         peak_compression(&mut syn, flags.peak_compression / 100.)?;
@@ -375,5 +320,104 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     }
 
     write_audio(out_file, &syn)?;
+    Ok(())
+}
+
+// Flag functions
+fn fry(
+    f0: &mut Vec<f64>,
+    sp: &mut Vec<Vec<f64>>,
+    vuv: &Vec<bool>,
+    t: &Vec<f64>,
+    consonant: f64,
+    flags: &Flags,
+) {
+    // fake fry with a low pitchbend
+    let fry_length = flags.fry_enable / 1000.;
+    let fry_transition = 0.5 * flags.fry_transition.copysign(flags.fry_enable) / 1000.;
+    let fry_offset = flags.fry_offset / 1000.;
+    let fry_volume = flags.fry_volume / 100.;
+    sp.iter_mut()
+        .zip(f0.iter_mut())
+        .zip(t.iter().zip(vuv.iter()))
+        .for_each(|((sp_frame, f0), (t, vuv))| {
+            let t = t - consonant - fry_offset;
+            let amt = smoothstep(
+                -fry_length - fry_transition,
+                -fry_length + fry_transition,
+                t,
+            ) * smoothstep(fry_transition, -fry_transition, t);
+            if *vuv {
+                *f0 = util::lerp(*f0, flags.fry_pitch, amt);
+            }
+            sp_frame
+                .iter_mut()
+                .for_each(|x| *x *= util::lerp(1., fry_volume * fry_volume, amt));
+        });
+}
+
+fn formant_shift(sp: &mut Vec<Vec<f64>>, ap: &mut Vec<Vec<f64>>, feature_dim: i32, shift: f64) {
+    // shift formants by stretching in the frequency domain
+    let freq_t: Vec<f64> = util::arange(feature_dim)
+        .iter()
+        .map(|x| x * shift)
+        .collect();
+    let mask: Vec<f64> = freq_t
+        .iter()
+        .map(|x| smoothstep((feature_dim - 1) as f64, (feature_dim - 2) as f64, *x))
+        .collect();
+
+    sp.iter_mut().for_each(|sp_frame| {
+        let freq_interp = interp::Akima::new(sp_frame);
+        *sp_frame = freq_interp.sample_with_vec(&freq_t);
+        sp_frame
+            .iter_mut()
+            .zip(mask.iter())
+            .for_each(|(s, m)| *s *= *m);
+    });
+
+    ap.iter_mut().for_each(|ap_frame| {
+        let freq_interp = interp::Akima::new(ap_frame);
+        *ap_frame = freq_interp.sample_with_vec(&freq_t);
+        ap_frame
+            .iter_mut()
+            .zip(mask.iter())
+            .for_each(|(a, m)| *a *= *m);
+    });
+}
+
+fn tremolo(
+    signal: &mut Vec<f64>,
+    pitch: &Vec<f64>,
+    t: &Vec<f64>,
+    fps: f64,
+    strength: f64,
+) -> Result<()> {
+    // Add tremolo to signal based on the pitchbend
+    // double approximate derivative leads to approximate inverted vibrato cuz of how the derivative of trig functions work <3
+    let tremolo: Vec<f64> = pitch.windows(2).map(|x| x[1] - x[0]).collect();
+    let mut tremolo: Vec<f64> = tremolo.windows(2).map(|x| -40. * (x[1] - x[0])).collect(); // -40 is just a value to scale and invert
+
+    // filter out vibratos out of range. vibrato range used is 4~8 Hz. this'll also remove some imprecision from the discrete diffs
+    let tremolo_highpass =
+        filter::make_coefficients(biquad::Type::HighPass, fps, 4., Q_BUTTERWORTH_F64)?;
+    let tremolo_lowpass =
+        filter::make_coefficients(biquad::Type::LowPass, fps, 8., Q_BUTTERWORTH_F64)?;
+    let mut tremolo_highpass = DirectForm2Transposed::<f64>::new(tremolo_highpass);
+    let mut tremolo_lowpass = DirectForm2Transposed::<f64>::new(tremolo_lowpass);
+
+    filter::forward_backward_filter(&mut tremolo, &mut tremolo_highpass, 1);
+    filter::forward_backward_filter(&mut tremolo, &mut tremolo_lowpass, 1);
+
+    // interpolate to sampling rate
+    let tremolo_interp = interp::Akima::new(&tremolo);
+    let tremolo_signal = tremolo_interp.sample_with_vec(&t.iter().map(|x| x * fps - 2.).collect());
+
+    // use the isolated vibratos as an envelope
+    signal
+        .iter_mut()
+        .zip(tremolo_signal.iter())
+        .for_each(|(x, env)| *x *= (std::f64::consts::LN_10 * env * strength / 5.).exp());
+
     Ok(())
 }
