@@ -67,19 +67,15 @@ jobs:
       #         sha: context.sha
       #       })
 
-      - name: Create Release
-        uses: ncipollo/release-action@v1.12.0
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
         with:
-          allowUpdates: true
           draft: false
-          makeLatest: true
-          commit: release-test
-          artifacts: ".\\target\\release\\*.exe"
+          make_latest: true
+          files: ./target/release/*.exe
           name: 'Straycat version ${{ steps.getversion.outputs.version }}'
-          tag: 'straycat-v${{ steps.getversion.outputs.version }}'
           body: 'A Straycat release. Some things changed. Probably.'
-          generateReleaseNotes: true
-          token: ${{ github.token }}
+          generate_release_notes: true
 
       # - name: Commit CHANGELOG.md
       #   uses: stefanzweifel/git-auto-commit-action@v4
