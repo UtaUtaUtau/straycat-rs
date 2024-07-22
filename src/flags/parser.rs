@@ -60,7 +60,7 @@ impl Flags {
             gender: 0.,
             breathiness: 50.,
             peak_compression: 86.,
-            peak_normalization: 6.,
+            peak_normalization: 4.,
             tremolo: 0.,
             pitch_offset: 0.,
             aperiodic_mix: 0.,
