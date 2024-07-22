@@ -3,7 +3,7 @@ name: 'build'
 on:
   push:
     branches:
-      - release
+      - main
 
 env:
   WINSDK_VERSION: 22621
