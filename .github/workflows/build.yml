@@ -28,8 +28,6 @@ jobs:
         # run: Copy-Item -Path .\.github\build.rs -Destination .\build.rs -force
       - name: Build Straycat
         run: cargo build --release
-      - name: Bundle Straycat
-        run: cargo bundle --release
   
   deploy:
     runs-on: ubuntu-latest
