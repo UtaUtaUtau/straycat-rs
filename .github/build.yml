@@ -1,0 +1,74 @@
+name: 'build'
+
+on:
+  push:
+    branches:
+      - release
+      - release-test
+
+jobs:
+  build-straycat:
+    needs: create-release
+    permissions:
+      contents: write
+
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
+        id: winsdk
+        sdk-version: 22621
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Execute Rust build
+        steps:
+          - name: Copy CI build script
+            run: (Get-Content .\build.rs) -replace '26100', '${{ steps.winsdk.sdk-version }}' | Set-Content .\build.rs
+            # run: Copy-Item -Path .\.github\build.rs -Destination .\build.rs -force
+          - name: Build Straycat
+            run: cargo build --release
+          - name: Bundle Straycat
+            run: cargo bundle --release
+        with:
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+  
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-get plugin
+        run: cargo install cargo-get
+      - name: Get version from Cargo.toml
+        run: echo "PACKAGE_VERSION=$(cargo get package.version)" >> $GITHUB_ENV
+
+      - name: Update CHANGELOG
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          tag: straycat-v${{ process.env.PACKAGE_VERSION }}
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          allowUpdates: true
+          draft: false
+          makeLatest: true
+          commit: release-test
+          artifacts: .\target\release\straycat-rs.exe
+          name: 'Straycat version ${{ process.env.PACKAGE_VERSION }}'
+          tag: 'straycat-v${{ process.env.PACKAGE_VERSION }}'
+          body: ${{ steps.changelog.outputs.changes }}
+          token: ${{ github.token }}
+
+      - name: Commit CHANGELOG.md
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          branch: main
+          commit_message: 'docs: update CHANGELOG.md for straycat-v${{ process.env.PACKAGE_VERSION }} [skip ci]'
+          file_pattern: CHANGELOG.md
