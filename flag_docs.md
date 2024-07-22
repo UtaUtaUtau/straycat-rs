@@ -45,8 +45,8 @@ This set of flags allow setting a specific area into a whispery sound, allowing 
 
 | Flag | Description | Unit | Default | Value Range | Recommended Range |
 | :--: | :---------- | :--: | :-----: | :---: | :------------------------: |
-| `g`  | Shifts the formants of the render, commonly known as "gender." Higher values makes a more "masculine" quality, lower values makes a more "feminine" quality. | 10 units = 1 semitone | 0 | (-inf, +inf) | [-120, 120][^a] |
-| `B`  | Controls the breathiness of the render. 100 produces a whisper only render. | percentage | 50 | [0, 100] | [0, 100][^b] |
+| `g`  | Shifts the formants of the render, commonly known as "gender." Higher values makes a more "masculine" quality, lower values makes a more "feminine" quality. | 10 units = 1 semitone | 0 | (-inf, +inf) | [-120, 120][^1] |
+| `B`  | Controls the breathiness of the render. 100 produces a whisper only render. | percentage | 50 | [0, 100] | [0, 100][^2] |
 | `P`  | Compresses the render based on the peak. Lower values give a stronger compression. 0 disables this. | percentage | 86 | [0, 100) | [0, 99] |
 | `p`  | Normalizes the render based on the peak after compression. Higher values leads to a quieter normalization as the input is negated. Negative values disable this. | dB (negated) | 4 | (-inf, +inf) | [-1, 6] |
 | `t`  | Applies an offset to the pitch of the note. Positive values offsets the pitch up, negative values down. | cents | 0 | (-inf, +inf) | [-100, 100] |
@@ -54,6 +54,6 @@ This set of flags allow setting a specific area into a whispery sound, allowing 
 | `gw` | Adds a faked growl to the render. 100 is similar to [death growl](https://en.wikipedia.org/wiki/Death_growl). | percentage | 0 | [0, 100] | [0, 100] |
 | `S`  | Mixes a render where the aperiodicity is maxed out. This produces an almost growl-like whispery tone which can complement the growl flag. | percentage | 0 | [0, 100] | [0, 100] |
 
-[^a]: OpenUtau has gender/GEN set as an expression for this flag with range [-100, 100].
+[^1]: OpenUtau has gender/GEN set as an expression for this flag with range [-100, 100].
 
-[^b]: OpenUtau has breath/BRE set as an expression for this flag with 0 for the default.
+[^2]: OpenUtau has breath/BRE set as an expression for this flag with 0 for the default.
