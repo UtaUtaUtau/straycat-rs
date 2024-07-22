@@ -6,9 +6,11 @@ on:
       - release
       - release-test
 
+env:
+  WINSDK_VERSION: 22621
+
 jobs:
   build-straycat:
-    needs: create-release
     permissions:
       contents: write
 
@@ -18,13 +20,11 @@ jobs:
       - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         id: winsdk
         with:
-          sdk-version: 22621
+          sdk-version: ${{ env.WINSDK_VERSION }}
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-        with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
       - name: Copy CI build script
-        run: (Get-Content .\build.rs) -replace '26100', '${{ steps.winsdk.sdk-version }}' | Set-Content .\build.rs
+        run: (Get-Content .\build.rs) -replace '26100', '${{ env.WINSDK_VERSION }}' | Set-Content .\build.rs
         # run: Copy-Item -Path .\.github\build.rs -Destination .\build.rs -force
       - name: Build Straycat
         run: cargo build --release
@@ -43,14 +43,16 @@ jobs:
       - name: Install cargo-get plugin
         run: cargo install cargo-get
       - name: Get version from Cargo.toml
-        run: echo "PACKAGE_VERSION=$(cargo get package.version)" >> $GITHUB_ENV
+        id: getversion
+        run: echo ::set-output name=version::$(cargo get package.version)
+        # run: echo "PACKAGE_VERSION=$(cargo get package.version)" >> $GITHUB_ENV
 
       - name: Update CHANGELOG
         id: changelog
         uses: requarks/changelog-action@v1
         with:
           token: ${{ github.token }}
-          tag: straycat-v${{ env.PACKAGE_VERSION }}
+          tag: straycat-v${{ steps.getversion.outputs.version }}
 
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
@@ -60,8 +62,8 @@ jobs:
           makeLatest: true
           commit: release-test
           artifacts: .\target\release\straycat-rs.exe
-          name: 'Straycat version ${{ env.PACKAGE_VERSION }}'
-          tag: 'straycat-v${{ env.PACKAGE_VERSION }}'
+          name: 'Straycat version ${{ steps.getversion.outputs.version }}'
+          tag: 'straycat-v${{ steps.getversion.outputs.version }}'
           body: ${{ steps.changelog.outputs.changes }}
           token: ${{ github.token }}
 
@@ -69,5 +71,5 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           branch: main
-          commit_message: 'docs: update CHANGELOG.md for straycat-v${{ process.env.PACKAGE_VERSION }} [skip ci]'
+          commit_message: 'docs: update CHANGELOG.md for straycat-v${{ steps.getversion.outputs.version }} [skip ci]'
           file_pattern: CHANGELOG.md
