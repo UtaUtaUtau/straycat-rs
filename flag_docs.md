@@ -45,6 +45,7 @@ This set of flags allow setting a specific area into a whispery sound, allowing 
 
 | Flag | Description | Unit | Default | Value Range | Recommended Range |
 | :--: | :---------- | :--: | :-----: | :---: | :------------------------: |
+| `G`  | Regenerates the `.sc` file that straycat-rs generates to cache WORLD features in. The value set for this flag controls the voicing threshold of WORLD's spectral analysis. Can also be used as an option flag. | percentage | 10 | [0, 100] | [0, 100] |
 | `g`  | Shifts the formants of the render, commonly known as "gender." Higher values makes a more "masculine" quality, lower values makes a more "feminine" quality. | 10 units = 1 semitone | 0 | (-inf, +inf) | [-120, 120][^1] |
 | `B`  | Controls the breathiness of the render. 100 produces a whisper only render. | percentage | 50 | [0, 100] | [0, 100][^2] |
 | `P`  | Compresses the render based on the peak. Lower values give a stronger compression. 0 disables this. | percentage | 86 | [0, 100) | [0, 99] |
