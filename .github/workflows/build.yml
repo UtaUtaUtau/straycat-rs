@@ -48,29 +48,26 @@ jobs:
           echo ::set-output name=version::$(cargo get package.version)
         # run: echo "PACKAGE_VERSION=$(cargo get package.version)" >> $GITHUB_ENV
 
-      - uses: mukunku/tag-exists-action@v1.6.0
-        id: check-tag
-        with: 
-          tag: straycat-v${{ steps.getversion.outputs.version }}
+      # - uses: mukunku/tag-exists-action@v1.6.0
+      #   id: check-tag
+      #   with: 
+      #     tag: straycat-v${{ steps.getversion.outputs.version }}
 
-      - name: Create tag
-        if: steps.check-tag.outputs.exists == 'false' 
-        uses: actions/github-script@v5
-        with:
-          script: |
-            github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'refs/tags/straycat-v${{ steps.getversion.outputs.version }}',
-              sha: context.sha
-            })
+      # - name: Create tag
+      #   if: steps.check-tag.outputs.exists == 'false' 
+      #   uses: actions/github-script@v5
+      #   with:
+      #     script: |
+      #       github.rest.git.createRef({
+      #         owner: context.repo.owner,
+      #         repo: context.repo.repo,
+      #         ref: 'refs/tags/straycat-v${{ steps.getversion.outputs.version }}',
+      #         sha: context.sha
+      #       })
 
-      - name: Update CHANGELOG
+      - name: Run Changelog CI
         id: changelog
-        uses: requarks/changelog-action@v1
-        with:
-          token: ${{ github.token }}
-          tag: ${{ github.ref_name }}
+        uses: saadmk11/changelog-ci@v1.1.2
 
       - name: Create Release
         uses: ncipollo/release-action@v1.12.0
@@ -82,7 +79,7 @@ jobs:
           artifacts: .\target\release\straycat-rs.exe
           name: 'Straycat version ${{ steps.getversion.outputs.version }}'
           tag: 'straycat-v${{ steps.getversion.outputs.version }}'
-          body: ${{ steps.changelog.outputs.changes }}
+          body: ${{ steps.changelog.outputs.changelog }}
           token: ${{ github.token }}
 
       - name: Commit CHANGELOG.md
