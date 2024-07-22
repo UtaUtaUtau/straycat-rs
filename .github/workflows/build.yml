@@ -51,7 +51,7 @@ jobs:
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
         with: 
-          tag: 'v1.0'
+          tag: straycat-v${{ steps.getversion.outputs.version }}
 
       - name: Create tag
         if: steps.check-tag.outputs.exists == 'false' 
