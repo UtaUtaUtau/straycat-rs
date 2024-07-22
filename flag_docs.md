@@ -2,7 +2,7 @@
  This is the main documentation of the flags available in straycat-rs.
 
 ## Value Notation for ranges
- The notation for the ranges of values follows [integer interval notation](https://en.wikipedia.org/wiki/Interval_(mathematics)#Notations_for_intervals) from mathematics. Keep in mind that flags can only receive integers (whole numbers). Here is a summary of this notation:
+ The notation for the ranges of values follows [interval notation](https://en.wikipedia.org/wiki/Interval_(mathematics)#Notations_for_intervals) from mathematics. Keep in mind that flags can only receive integers (whole numbers). Here is a summary of this notation:
  - Square brackets **[]** means the value is included in the range.
  - Parentheses **()** means the value is not included in the range.
  - **inf** means infinity. The sign indicates its direction.
