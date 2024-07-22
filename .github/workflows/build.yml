@@ -25,7 +25,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Copy CI build script
         run: (Get-Content .\build.rs) -replace '26100', '${{ env.WINSDK_VERSION }}' | Set-Content .\build.rs
-        # run: Copy-Item -Path .\.github\build.rs -Destination .\build.rs -force
       - name: Build Straycat
         run: cargo build --release
   
@@ -75,15 +74,16 @@ jobs:
           draft: false
           makeLatest: true
           commit: release-test
-          artifacts: .\target\release\straycat-rs.exe
+          artifacts: ".\\target\\release\\straycat-rs.exe"
           name: 'Straycat version ${{ steps.getversion.outputs.version }}'
           tag: 'straycat-v${{ steps.getversion.outputs.version }}'
           body: 'A Straycat release. Some things changed. Probably.'
+          generateReleaseNotes: true
           token: ${{ github.token }}
 
-      - name: Commit CHANGELOG.md
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          branch: main
-          commit_message: 'docs: update CHANGELOG.md for straycat-v${{ steps.getversion.outputs.version }} [skip ci]'
-          file_pattern: CHANGELOG.md
+      # - name: Commit CHANGELOG.md
+      #   uses: stefanzweifel/git-auto-commit-action@v4
+      #   with:
+      #     branch: main
+      #     commit_message: 'docs: update CHANGELOG.md for straycat-v${{ steps.getversion.outputs.version }} [skip ci]'
+      #     file_pattern: CHANGELOG.md
