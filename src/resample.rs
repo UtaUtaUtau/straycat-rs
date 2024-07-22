@@ -112,7 +112,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
     let t_stretch = if stretch_length > length_req {
         let con_idx = (consonant * fps) as usize;
         let len_idx = (length_req * fps) as usize;
-        t_features[con_idx..con_idx + len_idx].to_vec()
+        t_features[con_idx..(con_idx + len_idx).min(feature_length - 1)].to_vec()
     } else {
         util::linspace(consonant, end, (length_req * fps) as usize, true)
     };
