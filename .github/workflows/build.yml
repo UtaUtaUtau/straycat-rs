@@ -74,7 +74,7 @@ jobs:
           draft: false
           makeLatest: true
           commit: release-test
-          artifacts: ".\\target\\release\\straycat-rs.exe"
+          artifacts: ".\\target\\release\\*.exe"
           name: 'Straycat version ${{ steps.getversion.outputs.version }}'
           tag: 'straycat-v${{ steps.getversion.outputs.version }}'
           body: 'A Straycat release. Some things changed. Probably.'
