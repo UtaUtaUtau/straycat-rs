@@ -27,6 +27,11 @@ jobs:
         run: (Get-Content .\build.rs) -replace '26100', '${{ env.WINSDK_VERSION }}' | Set-Content .\build.rs
       - name: Build Straycat
         run: cargo build --release
+      - name: Store artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: straycat-build
+          path: target/release/straycat-rs.exe
   
   deploy:
     runs-on: ubuntu-latest
@@ -35,6 +40,11 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: straycat-build
         
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -72,7 +82,7 @@ jobs:
         with:
           draft: false
           make_latest: true
-          files: ./target/release/*.exe
+          files: ./*.exe
           name: 'Straycat version ${{ steps.getversion.outputs.version }}'
           tag_name: 'straycat-v${{ steps.getversion.outputs.version }}'
           body: 'A Straycat release. Some things changed. Probably.'
