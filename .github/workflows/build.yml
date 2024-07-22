@@ -17,20 +17,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         id: winsdk
-        sdk-version: 22621
+        with:
+          sdk-version: 22621
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-      - name: Execute Rust build
-        steps:
-          - name: Copy CI build script
-            run: (Get-Content .\build.rs) -replace '26100', '${{ steps.winsdk.sdk-version }}' | Set-Content .\build.rs
-            # run: Copy-Item -Path .\.github\build.rs -Destination .\build.rs -force
-          - name: Build Straycat
-            run: cargo build --release
-          - name: Bundle Straycat
-            run: cargo bundle --release
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
+      - name: Copy CI build script
+        run: (Get-Content .\build.rs) -replace '26100', '${{ steps.winsdk.sdk-version }}' | Set-Content .\build.rs
+        # run: Copy-Item -Path .\.github\build.rs -Destination .\build.rs -force
+      - name: Build Straycat
+        run: cargo build --release
+      - name: Bundle Straycat
+        run: cargo bundle --release
   
   deploy:
     runs-on: ubuntu-latest
