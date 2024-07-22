@@ -15,6 +15,8 @@
     - Build without icon:
         1. Delete the build script `build.rs`.
         2. Build with `cargo build -r`
+# Flag Documentation
+Check flag documentation [here](flag_docs.md).
 # Remarks
  This resampler will not be an exact copy of [straycat](https://github.com/UtaUtaUtau/straycat), but a variation of it. It may not do the exact same things as straycat, but my goal with this resampler is to match or surpass the quality of straycat.
 
