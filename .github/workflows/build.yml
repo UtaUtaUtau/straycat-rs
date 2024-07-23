@@ -58,8 +58,9 @@ jobs:
       - name: Get checksums for build
         id: checksums
         run: |
-          echo SHA256="$(shasum straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo SHA512="$(shasum -a 512 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo SHA1="$(shasum -a 1 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo SHA256="$(shasum -a 256 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo SHA384="$(shasum -a 384 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
           echo MD5="$(md5sum straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
 
       - uses: mukunku/tag-exists-action@v1.6.0
@@ -75,7 +76,7 @@ jobs:
             github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: 'refs/tags/v${{ steps.getversion.outputs.releaseVersion }}',
+              ref: 'refs/tags/${{ steps.getversion.outputs.releaseVersion }}',
               sha: context.sha
             })
 
@@ -86,9 +87,9 @@ jobs:
           make_latest: true
           files: "./*.exe"
           name: 'straycat-rs ${{ steps.getversion.outputs.releaseVersion }}'
-          tag_name: 'v${{ steps.getversion.outputs.releaseVersion }}'
+          tag_name: '${{ steps.getversion.outputs.releaseVersion }}'
           body: |
-            `A stable build of straycat-rs.
+            A stable build of straycat-rs.
             ### Changes
 
             ### Fixed
@@ -96,8 +97,8 @@ jobs:
             ### Hashes
             | Hash function | Hash |
             | --- | --- |
+            | SHA1 | ${{ steps.checksums.outputs.SHA1 }} |
             | SHA256 | ${{ steps.checksums.outputs.SHA256 }} |
-            | SHA512 | ${{ steps.checksums.outputs.SHA512 }} |
+            | SHA384 | ${{ steps.checksums.outputs.SHA384 }} |
             | MD5 | ${{ steps.checksums.outputs.MD5 }} |
-            `
           generate_release_notes: true
