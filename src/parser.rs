@@ -3,8 +3,8 @@ use clap::Parser;
 
 // Basic resampler args parser
 #[derive(Parser)]
-#[command(name = "straycat-rs")]
-#[command(version = "1.0.1")]
+#[command(name = env!("CARGO_PKG_NAME"))]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "WORLD-based UTAU resampler on Rust.")]
 #[command()]
 pub struct ResamplerArgs {
