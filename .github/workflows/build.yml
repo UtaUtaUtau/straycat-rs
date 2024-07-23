@@ -66,7 +66,7 @@ jobs:
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
         with: 
-          tag: v${{ steps.getversion.outputs.releaseVersion }}
+          tag: ${{ steps.getversion.outputs.releaseVersion }}
 
       - name: Create tag
         if: steps.check-tag.outputs.exists == 'false' 
@@ -86,7 +86,7 @@ jobs:
           draft: false
           make_latest: true
           files: "./*.exe"
-          name: 'straycat-rs ${{ steps.getversion.outputs.releaseVersion }}'
+          name: 'straycat-rs ${{ steps.getversion.outputs.rawVersion }}'
           tag_name: '${{ steps.getversion.outputs.releaseVersion }}'
           body: |
             A stable build of straycat-rs.
@@ -97,8 +97,8 @@ jobs:
             ### Hashes
             | Hash function | Hash |
             | --- | --- |
-            | SHA1 | ${{ steps.checksums.outputs.SHA1 }} |
-            | SHA256 | ${{ steps.checksums.outputs.SHA256 }} |
-            | SHA384 | ${{ steps.checksums.outputs.SHA384 }} |
-            | MD5 | ${{ steps.checksums.outputs.MD5 }} |
+            | MD5 | `${{ steps.checksums.outputs.MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.SHA384 }}` |
           generate_release_notes: true
