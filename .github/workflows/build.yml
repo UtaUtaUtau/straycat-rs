@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - ci-dev
 
 env:
   WINSDK_VERSION: 22621
@@ -46,21 +47,26 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: straycat-build
-        
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install cargo-get plugin
-        run: cargo install cargo-get
+
       - name: Get version from Cargo.toml
+        uses: thebongy/version-check@v2
+        with:
+          file: Cargo.toml
+          tagFormat: v${version}
         id: getversion
+
+      - name: Get checksums for build
+        id: checksums
         run: |
-          echo "Building Straycat version: $(cargo get package.version)"
-          echo ::set-output name=version::$(cargo get package.version)
+          echo SHA1="$(shasum -a 1 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo SHA256="$(shasum -a 256 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo SHA384="$(shasum -a 384 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MD5="$(md5sum straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
 
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
         with: 
-          tag: v${{ steps.getversion.outputs.version }}
+          tag: ${{ steps.getversion.outputs.releaseVersion }}
 
       - name: Create tag
         if: steps.check-tag.outputs.exists == 'false' 
@@ -70,7 +76,7 @@ jobs:
             github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: 'refs/tags/v${{ steps.getversion.outputs.version }}',
+              ref: 'refs/tags/${{ steps.getversion.outputs.releaseVersion }}',
               sha: context.sha
             })
 
@@ -79,8 +85,20 @@ jobs:
         with:
           draft: false
           make_latest: true
-          files: ./*.exe
-          name: 'straycat-rs ${{ steps.getversion.outputs.version }}'
-          tag_name: 'v${{ steps.getversion.outputs.version }}'
-          body: 'A stable build of straycat-rs.'
+          files: "./*.exe"
+          name: 'straycat-rs ${{ steps.getversion.outputs.rawVersion }}'
+          tag_name: '${{ steps.getversion.outputs.releaseVersion }}'
+          body: |
+            A stable build of straycat-rs.
+            ### Changes
+
+            ### Fixed
+
+            ### Hashes
+            | Hash function | Hash |
+            | --- | --- |
+            | MD5 | `${{ steps.checksums.outputs.MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.SHA384 }}` |
           generate_release_notes: true
