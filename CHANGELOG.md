@@ -1,6 +1,11 @@
 # Changelog
 
-## [1.0.8] - 2024-23-07
+## [1.0.9] - 2024-07-23
+
+### Fixed
+ - Fixed error with interpreting pitchbends that causes pitch errors around overlap areas.
+
+## [1.0.8] - 2024-07-23
 
 ### Changed
  - Add checksum hashes for each release by @layetri in https://github.com/UtaUtaUtau/straycat-rs/pull/4 (thank you again!)
@@ -29,6 +34,7 @@
 
  - Initial release 🎉
 
+[1.0.9]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.6...v1.0.8
 [1.0.6]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.1...v1.0.6
 [1.0.1]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.0...v1.0.1
