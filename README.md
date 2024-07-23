@@ -1,4 +1,4 @@
-# straycat-rs
+# straycat-rs ![build](https://github.com/UtaUtaUtau/straycat-rs/actions/workflows/build.yml/badge.svg)
  A Rust port of straycat, a WORLD-based UTAU resampler
 
 # How to use
