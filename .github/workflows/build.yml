@@ -89,7 +89,7 @@ jobs:
         with:
           draft: false
           make_latest: true
-          files: "./*.exe, ./*.exe.checksum, ./*.checksum"
+          files: "./*.exe, ./*.exe.checksum"
           name: 'straycat-rs ${{ steps.getversion.outputs.version }}'
           tag_name: 'v${{ steps.getversion.outputs.version }}'
           body: 'A stable build of straycat-rs.'
