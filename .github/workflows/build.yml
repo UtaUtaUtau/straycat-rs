@@ -58,7 +58,7 @@ jobs:
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
         with: 
-          tag: straycat-v${{ steps.getversion.outputs.version }}
+          tag: v${{ steps.getversion.outputs.version }}
 
       - name: Create tag
         if: steps.check-tag.outputs.exists == 'false' 
@@ -68,7 +68,7 @@ jobs:
             github.rest.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: 'refs/tags/straycat-v${{ steps.getversion.outputs.version }}',
+              ref: 'refs/tags/v${{ steps.getversion.outputs.version }}',
               sha: context.sha
             })
 
@@ -78,7 +78,7 @@ jobs:
           draft: false
           make_latest: true
           files: ./*.exe
-          name: 'Straycat version ${{ steps.getversion.outputs.version }}'
-          tag_name: 'straycat-v${{ steps.getversion.outputs.version }}'
-          body: 'A Straycat release. Some things changed. Probably.'
+          name: 'straycat-rs ${{ steps.getversion.outputs.version }}'
+          tag_name: 'v${{ steps.getversion.outputs.version }}'
+          body: 'A stable build of straycat-rs.'
           generate_release_notes: true
