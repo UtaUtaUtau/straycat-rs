@@ -65,9 +65,11 @@ jobs:
       - name: Generate checksums
         uses: Solratic/checksum-action@v1
         with:
-          pattern: "straycat.exe"
+          pattern: "straycat-rs.exe"
           suffix: "checksum"
 
+      - name: Create tmp zip
+        run: zip straycat.zip .
 
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
@@ -91,7 +93,7 @@ jobs:
         with:
           draft: false
           make_latest: true
-          files: "./*.exe, ./*.exe.sha256, ./*.exe.sha512, ./*.exe.md5, ./*.exe.checksum, ./*.checksum"
+          files: "./*.exe, ./*.exe.sha256, ./*.exe.sha512, ./*.exe.md5, ./*.exe.checksum, ./*.checksum, ./*.zip"
           name: 'Straycat version ${{ steps.getversion.outputs.version }}'
           tag_name: 'straycat-v${{ steps.getversion.outputs.version }}'
           body: 'A Straycat release. Some things changed. Probably.'
