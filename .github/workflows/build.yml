@@ -90,7 +90,11 @@ jobs:
           tag_name: '${{ steps.getversion.outputs.releaseVersion }}'
           body: |
             A stable build of straycat-rs.
-            ### Changes
+            ##[${{ steps.getversion.outputs.version }}] - xxxx-xx-xx
+
+            ### Added
+
+            ### Changed
 
             ### Fixed
 
