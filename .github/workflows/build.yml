@@ -1,0 +1,84 @@
+name: 'build'
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  WINSDK_VERSION: 22621
+
+jobs:
+  build-straycat:
+    permissions:
+      contents: write
+
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
+        id: winsdk
+        with:
+          sdk-version: ${{ env.WINSDK_VERSION }}
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Copy CI build script
+        run: (Get-Content .\build.rs) -replace '26100', '${{ env.WINSDK_VERSION }}' | Set-Content .\build.rs
+      - name: Build Straycat
+        run: cargo build --release
+      - name: Store artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: straycat-build
+          path: target/release/straycat-rs.exe
+  
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-straycat
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: straycat-build
+        
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-get plugin
+        run: cargo install cargo-get
+      - name: Get version from Cargo.toml
+        id: getversion
+        run: |
+          echo "Building Straycat version: $(cargo get package.version)"
+          echo ::set-output name=version::$(cargo get package.version)
+
+      - uses: mukunku/tag-exists-action@v1.6.0
+        id: check-tag
+        with: 
+          tag: v${{ steps.getversion.outputs.version }}
+
+      - name: Create tag
+        if: steps.check-tag.outputs.exists == 'false' 
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/v${{ steps.getversion.outputs.version }}',
+              sha: context.sha
+            })
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          make_latest: true
+          files: ./*.exe
+          name: 'straycat-rs ${{ steps.getversion.outputs.version }}'
+          tag_name: 'v${{ steps.getversion.outputs.version }}'
+          body: 'A stable build of straycat-rs.'
+          generate_release_notes: true
