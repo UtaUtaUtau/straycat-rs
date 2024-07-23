@@ -52,20 +52,22 @@ pub fn pitch_string_to_midi<S: AsRef<str>>(pitch_string: S) -> Result<Vec<f64>> 
     let mut pitchbend: Vec<i16> = Vec::new();
 
     let pitch_rle: Vec<&str> = pitch_string.split("#").collect();
-    for i in 0..pitch_rle.len() / 2 {
-        let pair = &pitch_rle[i * 2..i * 2 + 2];
-        let mut stream = to_int12_stream(pair[0])?;
-        let last_point = stream[stream.len() - 1];
-        let rle: usize = pair[1].parse()?;
-        pitchbend.append(&mut stream);
-        for _ in 1..rle {
-            pitchbend.push(last_point);
+    for chunk in pitch_rle.chunks(2) {
+        println!("{:?}", chunk);
+        let mut stream = to_int12_stream(chunk[0])?;
+        let last_point = if stream.len() > 0 {
+            let temp = stream[stream.len() - 1];
+            pitchbend.append(&mut stream);
+            Some(temp)
+        } else {
+            None
+        };
+        if chunk.len() == 2 {
+            let rle: usize = chunk[1].parse()?;
+            for _ in 0..rle {
+                pitchbend.push(last_point.unwrap_or(0))
+            }
         }
-    }
-
-    if pitch_rle.len() % 2 == 1 {
-        let mut stream = to_int12_stream(pitch_rle[pitch_rle.len() - 1])?;
-        pitchbend.append(&mut stream);
     }
 
     let ref_pitch = pitchbend[0];
