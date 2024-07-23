@@ -56,20 +56,14 @@ jobs:
           echo "Building Straycat version: $(cargo get package.version)"
           echo ::set-output name=version::$(cargo get package.version)
 
-      # - name: Get checksums for build
-        # run: |
-          # echo SHA256="$(shasum straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_ENV"
-          # echo SHA512="$(shasum -a 512 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_ENV"
-          # echo MD5="$(md5sum straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_ENV"
-
       - name: Generate checksums
         uses: Solratic/checksum-action@v1
         with:
           pattern: "straycat-rs.exe"
           suffix: "checksum"
 
-      - name: Create tmp zip
-        run: zip straycat.zip .
+      # - name: Create tmp zip
+        # run: zip straycat.zip ./*
 
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
