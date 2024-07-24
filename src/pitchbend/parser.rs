@@ -53,7 +53,6 @@ pub fn pitch_string_to_midi<S: AsRef<str>>(pitch_string: S) -> Result<Vec<f64>> 
 
     let pitch_rle: Vec<&str> = pitch_string.split("#").collect();
     for chunk in pitch_rle.chunks(2) {
-        println!("{:?}", chunk);
         let mut stream = to_int12_stream(chunk[0])?;
         let last_point = if stream.len() > 0 {
             let temp = stream[stream.len() - 1];
