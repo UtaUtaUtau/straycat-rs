@@ -64,7 +64,9 @@ pub fn pitch_string_to_midi<S: AsRef<str>>(pitch_string: S) -> Result<Vec<f64>> 
         if chunk.len() == 2 {
             let rle: usize = chunk[1].parse()?;
             for _ in 0..rle {
-                pitchbend.push(last_point.unwrap_or(0))
+                if let Some(p) = last_point {
+                    pitchbend.push(p);
+                }
             }
         }
     }
