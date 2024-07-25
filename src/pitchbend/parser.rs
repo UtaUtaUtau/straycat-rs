@@ -71,13 +71,7 @@ pub fn pitch_string_to_midi<S: AsRef<str>>(pitch_string: S) -> Result<Vec<f64>> 
         }
     }
 
-    let ref_pitch = pitchbend[0];
-    let flat_pitch = pitchbend.iter().all(|x| *x == ref_pitch);
-
-    let pitchbend: Vec<f64> = pitchbend
-        .into_iter()
-        .map(|x| if flat_pitch { 0. } else { x as f64 / 100. })
-        .collect();
+    let pitchbend: Vec<f64> = pitchbend.into_iter().map(|x| x as f64 / 100.).collect();
     Ok(pitchbend)
 }
 
