@@ -89,7 +89,10 @@ jobs:
           name: 'straycat-rs ${{ steps.getversion.outputs.rawVersion }}'
           tag_name: '${{ steps.getversion.outputs.releaseVersion }}'
           body: |
+            # straycat-rs ${{ steps.getversion.outputs.rawVersion }}
+
             A stable build of straycat-rs.
+
             ## [${{ steps.getversion.outputs.rawVersion }}] - xxxx-xx-xx
 
             ### Added
@@ -105,4 +108,6 @@ jobs:
             | SHA1 | `${{ steps.checksums.outputs.SHA1 }}` |
             | SHA256 | `${{ steps.checksums.outputs.SHA256 }}` |
             | SHA384 | `${{ steps.checksums.outputs.SHA384 }}` |
+
+            **Full Changelog**: https://github.com/UtaUtaUtau/straycat-rs/blob/main/CHANGELOG.md
           generate_release_notes: true
