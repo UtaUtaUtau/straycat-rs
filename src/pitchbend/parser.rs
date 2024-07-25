@@ -53,7 +53,6 @@ pub fn pitch_string_to_midi<S: AsRef<str>>(pitch_string: S) -> Result<Vec<f64>> 
 
     let pitch_rle: Vec<&str> = pitch_string.split("#").collect();
     for chunk in pitch_rle.chunks(2) {
-        println!("{:?}", chunk);
         let mut stream = to_int12_stream(chunk[0])?;
         let last_point = if stream.len() > 0 {
             let temp = stream[stream.len() - 1];
@@ -65,18 +64,14 @@ pub fn pitch_string_to_midi<S: AsRef<str>>(pitch_string: S) -> Result<Vec<f64>> 
         if chunk.len() == 2 {
             let rle: usize = chunk[1].parse()?;
             for _ in 0..rle {
-                pitchbend.push(last_point.unwrap_or(0))
+                if let Some(p) = last_point {
+                    pitchbend.push(p);
+                }
             }
         }
     }
 
-    let ref_pitch = pitchbend[0];
-    let flat_pitch = pitchbend.iter().all(|x| *x == ref_pitch);
-
-    let pitchbend: Vec<f64> = pitchbend
-        .into_iter()
-        .map(|x| if flat_pitch { 0. } else { x as f64 / 100. })
-        .collect();
+    let pitchbend: Vec<f64> = pitchbend.into_iter().map(|x| x as f64 / 100.).collect();
     Ok(pitchbend)
 }
 
