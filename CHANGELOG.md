@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.10] - 2024-07-25
+
+### Fixed
+ - Fixed OpenUtau + issue.
+
 ## [1.0.9] - 2024-07-23
 
 ### Fixed
@@ -34,6 +39,7 @@
 
  - Initial release 🎉
 
+[1.0.10]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.9...v1.0.10
 [1.0.9]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.6...v1.0.8
 [1.0.6]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.1...v1.0.6
