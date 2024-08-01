@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.0.11] - 2024-08-01
+
+### Fixed
+ - Fixed vocal fry issue on some notes.
+
 ## [1.0.10] - 2024-07-25
 
 ### Fixed
@@ -39,6 +44,7 @@
 
  - Initial release 🎉
 
+[1.0.11]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.10...v1.0.11
 [1.0.10]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.9...v1.0.10
 [1.0.9]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/UtaUtaUtau/straycat-rs/compare/v1.0.6...v1.0.8
