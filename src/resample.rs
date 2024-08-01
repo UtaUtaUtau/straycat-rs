@@ -178,7 +178,7 @@ pub fn run(args: ResamplerArgs) -> Result<()> {
         fry(
             &mut f0_render,
             &mut sp_render,
-            &vuv,
+            &vuv_render,
             &t_sec,
             consonant,
             &flags,
