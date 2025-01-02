@@ -79,10 +79,10 @@ jobs:
           echo WIN_SHA256="$(shasum -a 256 win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
           echo WIN_SHA384="$(shasum -a 384 win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
           echo WIN_MD5="$(md5sum win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MAC_SHA1="$(shasum -a 1 mac-silicon/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MAC_SHA256="$(shasum -a 256 mac-silicon/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MAC_SHA384="$(shasum -a 384 mac-silicon/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MAC_MD5="$(md5sum mac-silicon/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MAC_SHA1="$(shasum -a 1 mac-silicon/straycat-rs | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MAC_SHA256="$(shasum -a 256 mac-silicon/straycat-rs | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MAC_SHA384="$(shasum -a 384 mac-silicon/straycat-rs | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MAC_MD5="$(md5sum mac-silicon/straycat-rs| awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
 
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
