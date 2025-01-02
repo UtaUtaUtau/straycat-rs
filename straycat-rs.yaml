@@ -1,0 +1,162 @@
+expressions:
+  frye:
+    name: vocal fry length
+    abbr: frye
+    type: Numerical
+    min: -1000
+    max: 1000
+    default_value: 0
+    is_flag: true
+    flag: fe
+  fryo:
+    name: vocal fry offset
+    abbr: fryo
+    type: Numerical
+    min: -1000
+    max: 1000
+    default_value: 0
+    is_flag: true
+    flag: fo
+  fryl:
+    name: vocal fry transition length
+    abbr: fryl
+    type: Numerical
+    min: 1
+    max: 250
+    default_value: 75
+    is_flag: true
+    flag: fl
+  fryv:
+    name: vocal fry volume
+    abbr: fryv
+    type: Numerical
+    min: 0
+    max: 100
+    default_value: 10
+    is_flag: true
+    flag: fv
+  fryp:
+    name: vocal fry pitch
+    abbr: fryp
+    type: Numerical
+    min: 0
+    max: 71
+    default_value: 71
+    is_flag: true
+    flag: fp
+  dvxe:
+    name: devoice length
+    abbr: dvxe
+    type: Numerical
+    min: -1000
+    max: 1000
+    default_value: 0
+    is_flag: true
+    flag: ve
+  dvxo:
+    name: devoice offset
+    abbr: dvxo
+    type: Numerical
+    min: -1000
+    max: 1000
+    default_value: 0
+    is_flag: true
+    flag: vo
+  dvxl:
+    name: devoice transition length
+    abbr: dvxl
+    type: Numerical
+    min: 1
+    max: 1000
+    default_value: 75
+    is_flag: true
+    flag: vl
+  sgen:
+    name: gender
+    abbr: sgen
+    type: Numerical
+    min: -120
+    max: 120
+    default_value: 0
+    is_flag: true
+    flag: g
+  sbre:
+    name: breathiness
+    abbr: sbre
+    type: Numerical
+    min: 0
+    max: 100
+    default_value: 50
+    is_flag: true
+    flag: B
+  pcmp:
+    name: peak compressor
+    abbr: pcmp
+    type: Numerical
+    min: 0
+    max: 99
+    default_value: 86
+    is_flag: true
+    flag: P
+  pnrm:
+    name: peak normalization
+    abbr: pnrm
+    type: Numerical
+    min: -1
+    max: 6
+    default_value: 4
+    is_flag: true
+    flag: p
+  foff:
+    name: pitch offset
+    abbr: foff
+    type: Numerical
+    min: -100
+    max: 100
+    default_value: 0
+    is_flag: true
+    flag: t
+  trem:
+    name: tremolo
+    abbr: trem
+    type: Numerical
+    min: -100
+    max: 100
+    default_value: 0
+    is_flag: true
+    flag: A
+  grwl:
+    name: growl
+    abbr: grwl
+    type: Numerical
+    min: 0
+    max: 100
+    default_value: 0
+    is_flag: true
+    flag: gw
+  apmx:
+    name: aperiodic mix
+    abbr: apmx
+    type: Numerical
+    min: 0
+    max: 100
+    default_value: 0
+    is_flag: true
+    flag: S
+  rgn:
+    name: regenerate features
+    abbr: rgn
+    type: Options
+    is_flag: true
+    options:
+    - ''
+    - G10
+    - G20
+    - G30
+    - G40
+    - G50
+    - G60
+    - G70
+    - G80
+    - G90
+    - G100

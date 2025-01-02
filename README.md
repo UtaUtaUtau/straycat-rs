@@ -17,6 +17,7 @@
         2. Build with `cargo build -r`
 # Flag Documentation
 Check flag documentation [here](flag_docs.md).
+An official resampler manifest file is now available for OpenUtau users [here](https://raw.githubusercontent/UtaUtaUtau/straycat-rs/dev/straycat-rs.yaml)
 # Example Renders
  These renders use straycat-rs 1.0.10. No flags are used in these renders unless stated.
  
