@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.12] - 2025-01-02
+
+### Added
+ - Distribute an official resampler manifest file for OpenUtau users.
+
+### Changed
+ - Change D4C default threshold to 0.25 to match old straycat.
+
 ## [1.0.11] - 2024-08-01
 
 ### Fixed
