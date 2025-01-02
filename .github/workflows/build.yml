@@ -10,7 +10,7 @@ env:
   WINSDK_VERSION: 22621
 
 jobs:
-  build-straycat:
+  build-straycat-win:
     permissions:
       contents: write
 
@@ -30,23 +30,40 @@ jobs:
       - name: Store artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: straycat-build
+          name: win
           path: target/release/straycat-rs.exe
-  
+
+  build-straycat-mac-silicon:
+    permissions:
+      contents: write
+
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: actions-rs/toolchain@v1.0.6
+        with:
+         toolchain: stable
+      - name: Build Straycat
+        run: cargo build --release
+      - name: Store artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-silicon
+          path: target/release/straycat-rs
+
   deploy:
     permissions:
       contents: write
 
     runs-on: ubuntu-latest
-    needs: build-straycat
+    needs: [build-straycat-win, build-straycat-mac-silicon]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
-        with:
-          name: straycat-build
 
       - name: Get version from Cargo.toml
         uses: thebongy/version-check@v2
@@ -58,10 +75,14 @@ jobs:
       - name: Get checksums for build
         id: checksums
         run: |
-          echo SHA1="$(shasum -a 1 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo SHA256="$(shasum -a 256 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo SHA384="$(shasum -a 384 straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MD5="$(md5sum straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo WIN_SHA1="$(shasum -a 1 win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo WIN_SHA256="$(shasum -a 256 win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo WIN_SHA384="$(shasum -a 384 win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo WIN_MD5="$(md5sum win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MAC_SHA1="$(shasum -a 1 mac-silicon/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MAC_SHA256="$(shasum -a 256 mac-silicon/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MAC_SHA384="$(shasum -a 384 mac-silicon/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          echo MAC_MD5="$(md5sum mac-silicon/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
 
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
@@ -85,7 +106,9 @@ jobs:
         with:
           draft: false
           make_latest: true
-          files: "./*.exe"
+          files: |
+            win/straycat-rs.exe
+            mac-silicon/straycat-rs
           name: 'straycat-rs ${{ steps.getversion.outputs.rawVersion }}'
           tag_name: '${{ steps.getversion.outputs.releaseVersion }}'
           body: |
@@ -102,12 +125,21 @@ jobs:
             ### Fixed
 
             ### Hashes
+            #### Windows
             | Hash function | Hash |
             | --- | --- |
-            | MD5 | `${{ steps.checksums.outputs.MD5 }}` |
-            | SHA1 | `${{ steps.checksums.outputs.SHA1 }}` |
-            | SHA256 | `${{ steps.checksums.outputs.SHA256 }}` |
-            | SHA384 | `${{ steps.checksums.outputs.SHA384 }}` |
+            | MD5 | `${{ steps.checksums.outputs.WIN_MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.WIN_SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.WIN_SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.WIN_SHA384 }}` |
+
+            #### MacOS (Silicon)
+            | Hash function | Hash |
+            | --- | --- |
+            | MD5 | `${{ steps.checksums.outputs.MAC_MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.MAC_SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.MAC_SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.MAC_SHA384 }}` |
 
             **Full Changelog**: https://github.com/UtaUtaUtau/straycat-rs/blob/main/CHANGELOG.md
           generate_release_notes: true
