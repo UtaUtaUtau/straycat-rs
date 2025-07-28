@@ -5,51 +5,69 @@ on:
     branches:
       - master
       - ci-dev
+  workflow_dispatch: {}
 
 env:
   WINSDK_VERSION: 22621
 
 jobs:
-  build-straycat-win:
+  build-straycat:
     permissions:
       contents: write
-
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: 
+          - runs-on: windows-latest
+            arch: win-x64
+            os: windows
+          - runs-on: windows-11-arm
+            arch: win-arm64
+            os: windows
+          - runs-on: macos-13
+            arch: osx-x64
+            os: mac
+          - runs-on: macos-15
+            arch: osx-arm64
+            os: mac
+          - runs-on: ubuntu-latest
+            arch: linux-x64
+            os: linux
+          - runs-on: ubuntu-24.04-arm
+            arch: linux-arm64
+            os: linux
+    runs-on: ${{ matrix.os.runs-on }}
     steps:
       - uses: actions/checkout@v4
+      
       - uses: GuillaumeFalourd/setup-windows10-sdk-action@v2
         id: winsdk
+        if: matrix.os.os == 'windows'
         with:
           sdk-version: ${{ env.WINSDK_VERSION }}
+      
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
-      - name: Copy CI build script
-        run: (Get-Content .\build.rs) -replace '26100', '${{ env.WINSDK_VERSION }}' | Set-Content .\build.rs
+      
+      - name: Enter visual studio dev console 
+        uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.os.os == 'windows'
+
       - name: Build Straycat
         run: cargo build --release
-      - name: Store artifacts
+      
+      - name: Store artifacts (windows)
+        if: matrix.os.os == 'windows'
         uses: actions/upload-artifact@v4
         with:
-          name: win
+          name: ${{ matrix.os.arch }}
           path: target/release/straycat-rs.exe
-
-  build-straycat-mac-silicon:
-    permissions:
-      contents: write
-
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust stable
-        uses: actions-rs/toolchain@v1.0.6
-        with:
-         toolchain: stable
-      - name: Build Straycat
-        run: cargo build --release
-      - name: Store artifacts
+      
+      - name: Store artifacts (posix)
+        if: matrix.os.os != 'windows'
         uses: actions/upload-artifact@v4
         with:
-          name: mac-silicon
+          name: ${{ matrix.os.arch }}
           path: target/release/straycat-rs
 
   deploy:
@@ -57,7 +75,7 @@ jobs:
       contents: write
 
     runs-on: ubuntu-latest
-    needs: [build-straycat-win, build-straycat-mac-silicon]
+    needs: [build-straycat]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -75,14 +93,20 @@ jobs:
       - name: Get checksums for build
         id: checksums
         run: |
-          echo WIN_SHA1="$(shasum -a 1 win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo WIN_SHA256="$(shasum -a 256 win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo WIN_SHA384="$(shasum -a 384 win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo WIN_MD5="$(md5sum win/straycat-rs.exe | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MAC_SHA1="$(shasum -a 1 mac-silicon/straycat-rs | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MAC_SHA256="$(shasum -a 256 mac-silicon/straycat-rs | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MAC_SHA384="$(shasum -a 384 mac-silicon/straycat-rs | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-          echo MAC_MD5="$(md5sum mac-silicon/straycat-rs| awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          for arch in "win-x64" "win-arm64" "osx-x64" "osx-arm64" "linux-x64" "linux-arm64"; do
+            # if windows, executable is straycat-rs.exe, otherwise straycat-rs
+            if [[ $arch == "win"* ]]; then
+              file="${arch}/straycat-rs.exe"
+              cp $file "straycat-rs-${arch}.exe"
+            else
+              file="${arch}/straycat-rs"
+              cp $file "straycat-rs-${arch}"
+            fi
+            echo "${arch}_SHA1=$(shasum -a 1 "$file" | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+            echo "${arch}_SHA256=$(shasum -a 256 "$file" | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+            echo "${arch}_SHA384=$(shasum -a 384 "$file" | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+            echo "${arch}_MD5=$(md5sum "$file" | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
+          done
 
       - uses: mukunku/tag-exists-action@v1.6.0
         id: check-tag
@@ -107,8 +131,12 @@ jobs:
           draft: false
           make_latest: true
           files: |
-            win/straycat-rs.exe
-            mac-silicon/straycat-rs
+            straycat-rs-win-x64.exe
+            straycat-rs-win-arm64.exe
+            straycat-rs-osx-x64
+            straycat-rs-osx-arm64
+            straycat-rs-linux-x64
+            straycat-rs-linux-arm64
           name: 'straycat-rs ${{ steps.getversion.outputs.rawVersion }}'
           tag_name: '${{ steps.getversion.outputs.releaseVersion }}'
           body: |
@@ -125,21 +153,53 @@ jobs:
             ### Fixed
 
             ### Hashes
-            #### Windows
+            #### Windows x64
             | Hash function | Hash |
             | --- | --- |
-            | MD5 | `${{ steps.checksums.outputs.WIN_MD5 }}` |
-            | SHA1 | `${{ steps.checksums.outputs.WIN_SHA1 }}` |
-            | SHA256 | `${{ steps.checksums.outputs.WIN_SHA256 }}` |
-            | SHA384 | `${{ steps.checksums.outputs.WIN_SHA384 }}` |
+            | MD5 | `${{ steps.checksums.outputs.win-x64_MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.win-x64_SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.win-x64_SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.win-x64_SHA384 }}` |
 
-            #### MacOS (Silicon)
+            #### Windows arm64
             | Hash function | Hash |
             | --- | --- |
-            | MD5 | `${{ steps.checksums.outputs.MAC_MD5 }}` |
-            | SHA1 | `${{ steps.checksums.outputs.MAC_SHA1 }}` |
-            | SHA256 | `${{ steps.checksums.outputs.MAC_SHA256 }}` |
-            | SHA384 | `${{ steps.checksums.outputs.MAC_SHA384 }}` |
+            | MD5 | `${{ steps.checksums.outputs.win-arm64_MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.win-arm64_SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.win-arm64_SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.win-arm64_SHA384 }}` |
+
+            #### MacOS x64
+            | Hash function | Hash |
+            | --- | --- |
+            | MD5 | `${{ steps.checksums.outputs.osx-x64_MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.osx-x64_SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.osx-x64_SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.osx-x64_SHA384 }}` |
+
+            #### MacOS arm64
+            | Hash function | Hash |
+            | --- | --- |
+            | MD5 | `${{ steps.checksums.outputs.osx-arm64_MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.osx-arm64_SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.osx-arm64_SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.osx-arm64_SHA384 }}` |
+
+            #### Linux x64
+            | Hash function | Hash |
+            | --- | --- |
+            | MD5 | `${{ steps.checksums.outputs.linux-x64_MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.linux-x64_SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.linux-x64_SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.linux-x64_SHA384 }}` |
+
+            #### Linux arm64
+            | Hash function | Hash |
+            | --- | --- |
+            | MD5 | `${{ steps.checksums.outputs.linux-arm64_MD5 }}` |
+            | SHA1 | `${{ steps.checksums.outputs.linux-arm64_SHA1 }}` |
+            | SHA256 | `${{ steps.checksums.outputs.linux-arm64_SHA256 }}` |
+            | SHA384 | `${{ steps.checksums.outputs.linux-arm64_SHA384 }}` |
 
             **Full Changelog**: https://github.com/UtaUtaUtau/straycat-rs/blob/main/CHANGELOG.md
           generate_release_notes: true
